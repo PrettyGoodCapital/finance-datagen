@@ -1,0 +1,21 @@
+finance_datagen
+===============
+
+.. py:module:: finance_datagen
+
+
+Attributes
+----------
+
+.. autoapisummary::
+
+   finance_datagen.__version__
+
+
+Package Contents
+----------------
+
+.. py:data:: __version__
+   :value: '0.1.0'
+
+
