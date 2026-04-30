@@ -11,8 +11,11 @@ crate-type = ["cdylib"]
 
 [dependencies]
 finance_datagen = { path = "./rust", version = "*" }
-pyo3 = { version = "0.28.2", features = ["abi3", "extension-module", "multiple-pymethods"] }
-pyo3-arrow = "0.17"
+pyo3 = { version = "0.28.2", features = ["abi3", "abi3-py310", "extension-module", "multiple-pymethods"] }
+# pyo3-arrow's `buffer_protocol` default feature requires `abi3-py311` or
+# non-abi3 builds; we target abi3-py310 so disable it. We pass Arrow data
+# via PyCapsule (PyArray / PyRecordBatch), not the Python buffer protocol.
+pyo3-arrow = { version = "0.17", default-features = false }
 arrow-array = "58"
 arrow-schema = "58"
 
