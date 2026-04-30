@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="finance_datagen" href="../finance_datagen/index.html"><link rel="prev" title="API Reference" href="../index.html">
+<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="prev" title="Data" href="DATA.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>test_all - finance datagen v0.1.0</title>
+        <title>API - finance datagen v0.1.0</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -197,11 +197,8 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <ul class="current">
-<li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">API Reference</a><input aria-label="Toggle navigation of API Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">test_all</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../finance_datagen/index.html">finance_datagen</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="DATA.html">Data</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">API</a></li>
 </ul>
 
 </div>
@@ -222,7 +219,7 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="../../_sources/autoapi/test_all/index.rst.txt" title="View this page">
+  <a class="muted-link" href="../../_sources/docs/src/API.md.txt" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
@@ -240,27 +237,111 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="module-test_all">
-<span id="test-all"></span><h1>test_all<a class="headerlink" href="#module-test_all" title="Link to this heading">¶</a></h1>
-<section id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Link to this heading">¶</a></h2>
-<div class="table-wrapper autosummary longtable docutils container">
-<table class="autosummary longtable docutils align-default">
-<tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_all" title="test_all.test_all"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_all</span></code></a>()</p></td>
-<td><p></p></td>
-</tr>
-</tbody>
-</table>
+          <section class="tex2jax_ignore mathjax_ignore" id="api">
+<h1>API<a class="headerlink" href="#api" title="Link to this heading">¶</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">finance-datagen</span></code> exposes the following public symbols at the top of
+the package:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_datagen</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="c1"># Rust-backed price-path generators</span>
+    <span class="n">GBMGenerator</span><span class="p">,</span>
+    <span class="n">HestonGenerator</span><span class="p">,</span>
+    <span class="n">GARCHGenerator</span><span class="p">,</span>
+    <span class="n">ohlc_from_close</span><span class="p">,</span>
+    <span class="c1"># Python cross-sectional generators</span>
+    <span class="n">generate_signal</span><span class="p">,</span>
+    <span class="n">generate_factor_loadings</span><span class="p">,</span>
+    <span class="n">generate_benchmark</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Each price-path generator class follows the same pattern: instantiate
+with parameters, then call <code class="docutils literal notranslate"><span class="pre">.generate()</span></code> to obtain a polars
+<code class="docutils literal notranslate"><span class="pre">DataFrame</span></code>. The cross-sectional generators are plain functions that
+return a <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> directly.</p>
+<p>For the precise math, parameter ranges, and output schemas of every
+model, see the <a class="reference internal" href="DATA.html"><span class="std std-doc">Data</span></a> page.</p>
+<hr class="docutils" />
+<section id="quick-start">
+<h2>Quick start<a class="headerlink" href="#quick-start" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_datagen</span><span class="w"> </span><span class="kn">import</span> <span class="n">GBMGenerator</span><span class="p">,</span> <span class="n">ohlc_from_close</span>
+
+<span class="c1"># 1 year of daily log-normal closes, deterministic.</span>
+<span class="n">prices</span> <span class="o">=</span> <span class="n">GBMGenerator</span><span class="p">(</span>
+    <span class="n">s0</span><span class="o">=</span><span class="mf">100.0</span><span class="p">,</span>
+    <span class="n">mu</span><span class="o">=</span><span class="mf">0.07</span><span class="p">,</span>
+    <span class="n">sigma</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>
+    <span class="n">n_steps</span><span class="o">=</span><span class="mi">252</span><span class="p">,</span>
+    <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span>
+
+<span class="c1"># Synthesize OHLCV bars around the closes.</span>
+<span class="n">bars</span> <span class="o">=</span> <span class="n">ohlc_from_close</span><span class="p">(</span><span class="n">prices</span><span class="p">[</span><span class="s2">&quot;price&quot;</span><span class="p">],</span> <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;ACME&quot;</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">bars</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</pre></div>
 </div>
 </section>
-<section id="module-contents">
-<h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading">¶</a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="test_all.test_all">
-<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_all</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#test_all.test_all" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<hr class="docutils" />
+<section id="reference">
+<h2>Reference<a class="headerlink" href="#reference" title="Link to this heading">¶</a></h2>
+</section>
+<section id="recipes">
+<h2>Recipes<a class="headerlink" href="#recipes" title="Link to this heading">¶</a></h2>
+<section id="composing-models">
+<h3>Composing models<a class="headerlink" href="#composing-models" title="Link to this heading">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">ohlc_from_close</span></code> is generator-agnostic — feed it any close series.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_datagen</span><span class="w"> </span><span class="kn">import</span> <span class="n">HestonGenerator</span><span class="p">,</span> <span class="n">ohlc_from_close</span>
 
+<span class="n">px</span> <span class="o">=</span> <span class="n">HestonGenerator</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span>
+<span class="n">bars</span> <span class="o">=</span> <span class="n">ohlc_from_close</span><span class="p">(</span><span class="n">px</span><span class="p">[</span><span class="s2">&quot;price&quot;</span><span class="p">],</span> <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;HEST&quot;</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="long-horizons">
+<h3>Long horizons<a class="headerlink" href="#long-horizons" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 10 years of daily data</span>
+<span class="n">GBMGenerator</span><span class="p">(</span><span class="n">n_steps</span><span class="o">=</span><span class="mi">252</span> <span class="o">*</span> <span class="mi">10</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="custom-timestamp-grids">
+<h3>Custom timestamp grids<a class="headerlink" href="#custom-timestamp-grids" title="Link to this heading">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">step_ms</span></code> and <code class="docutils literal notranslate"><span class="pre">start_ms</span></code> are independent of <code class="docutils literal notranslate"><span class="pre">dt</span></code>, so you can produce a
+high-frequency timestamp grid for visual inspection while keeping the
+SDE on a daily scale:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">GBMGenerator</span><span class="p">(</span>
+    <span class="n">n_steps</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+    <span class="n">dt</span><span class="o">=</span><span class="mi">1</span><span class="o">/</span><span class="mi">252</span><span class="p">,</span>                <span class="c1"># daily-scale variance</span>
+    <span class="n">start_ms</span><span class="o">=</span><span class="mi">1_700_000_000_000</span><span class="p">,</span>
+    <span class="n">step_ms</span><span class="o">=</span><span class="mi">60_000</span><span class="p">,</span>          <span class="c1"># 1-minute timestamps</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="bypassing-the-polars-wrapper">
+<h3>Bypassing the polars wrapper<a class="headerlink" href="#bypassing-the-polars-wrapper" title="Link to this heading">¶</a></h3>
+<p>If you need the raw <code class="docutils literal notranslate"><span class="pre">pyarrow.RecordBatch</span></code> (e.g. to write Parquet
+without round-tripping through polars):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_datagen.finance_datagen</span><span class="w"> </span><span class="kn">import</span> <span class="n">GBMGenerator</span> <span class="k">as</span> <span class="n">RustGBM</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow.parquet</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pq</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pa</span>
+
+<span class="n">batch</span> <span class="o">=</span> <span class="n">RustGBM</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">record_batch</span><span class="p">()</span>
+<span class="n">pq</span><span class="o">.</span><span class="n">write_table</span><span class="p">(</span><span class="n">pa</span><span class="o">.</span><span class="n">Table</span><span class="o">.</span><span class="n">from_batches</span><span class="p">([</span><span class="n">batch</span><span class="p">]),</span> <span class="s2">&quot;gbm.parquet&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="versioning">
+<h2>Versioning<a class="headerlink" href="#versioning" title="Link to this heading">¶</a></h2>
+<p>The current version is exposed at <code class="docutils literal notranslate"><span class="pre">finance_datagen.__version__</span></code>. The
+public API is the symbols listed above; private members
+(<code class="docutils literal notranslate"><span class="pre">_inner</span></code>, <code class="docutils literal notranslate"><span class="pre">_rb_to_polars</span></code>, <code class="docutils literal notranslate"><span class="pre">finance_datagen.finance_datagen.*</span></code>) are
+not part of the SemVer contract and may change between releases.</p>
 </section>
 </section>
 
@@ -269,23 +350,15 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="../finance_datagen/index.html">
-              <div class="page-info">
-                <div class="context">
-                  <span>Next</span>
-                </div>
-                <div class="title">finance_datagen</div>
-              </div>
-              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
-            </a>
-          <a class="prev-page" href="../index.html">
+          
+          <a class="prev-page" href="DATA.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">API Reference</div>
+                <div class="title">Data</div>
                 
               </div>
             </a>
@@ -319,12 +392,17 @@
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">test_all</a><ul>
-<li><a class="reference internal" href="#functions">Functions</a></li>
-<li><a class="reference internal" href="#module-contents">Module Contents</a><ul>
-<li><a class="reference internal" href="#test_all.test_all"><code class="docutils literal notranslate"><span class="pre">test_all()</span></code></a></li>
+<li><a class="reference internal" href="#">API</a><ul>
+<li><a class="reference internal" href="#quick-start">Quick start</a></li>
+<li><a class="reference internal" href="#reference">Reference</a></li>
+<li><a class="reference internal" href="#recipes">Recipes</a><ul>
+<li><a class="reference internal" href="#composing-models">Composing models</a></li>
+<li><a class="reference internal" href="#long-horizons">Long horizons</a></li>
+<li><a class="reference internal" href="#custom-timestamp-grids">Custom timestamp grids</a></li>
+<li><a class="reference internal" href="#bypassing-the-polars-wrapper">Bypassing the polars wrapper</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#versioning">Versioning</a></li>
 </ul>
 </li>
 </ul>

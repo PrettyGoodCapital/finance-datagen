@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="API Reference" href="autoapi/index.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Data" href="docs/src/DATA.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
         <title>finance datagen v0.1.0</title>
@@ -197,11 +197,8 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <ul>
-<li class="toctree-l1 has-children"><a class="reference internal" href="autoapi/index.html">API Reference</a><input aria-label="Toggle navigation of API Reference" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="autoapi/test_all/index.html">test_all</a></li>
-<li class="toctree-l2"><a class="reference internal" href="autoapi/finance_datagen/index.html">finance_datagen</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="docs/src/DATA.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/src/API.html">API</a></li>
 </ul>
 
 </div>
@@ -251,10 +248,99 @@
 <a class="reference external" href="https://pypi.python.org/pypi/finance-datagen"><img alt="PyPI" src="https://img.shields.io/pypi/v/finance-datagen.svg" /></a></p>
 <section id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">finance-datagen</span></code> produces <strong>synthetic</strong> financial time series for
+testing, demos, and benchmarking the rest of the <code class="docutils literal notranslate"><span class="pre">finance-*</span></code> stack
+without relying on real market data. The numerical core is implemented
+in Rust and emits Apache Arrow <code class="docutils literal notranslate"><span class="pre">RecordBatch</span></code> values; the Python layer
+wraps each generator so the public API returns <code class="docutils literal notranslate"><span class="pre">polars.DataFrame</span></code>
+objects.</p>
+<section id="generators">
+<h3>Generators<a class="headerlink" href="#generators" title="Link to this heading">¶</a></h3>
+<section id="price-models-rust-core">
+<h4>Price models (Rust core)<a class="headerlink" href="#price-models-rust-core" title="Link to this heading">¶</a></h4>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Symbol</p></th>
+<th class="head"><p>Model</p></th>
+<th class="head"><p>Output columns</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GBMGenerator</span></code></p></td>
+<td><p>Geometric Brownian Motion (log-Euler)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">timestamp,</span> <span class="pre">symbol,</span> <span class="pre">price</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HestonGenerator</span></code></p></td>
+<td><p>Heston (1993) stochastic volatility (full-truncation Euler)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">timestamp,</span> <span class="pre">symbol,</span> <span class="pre">price,</span> <span class="pre">variance</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GARCHGenerator</span></code></p></td>
+<td><p>GARCH(1,1) returns</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">timestamp,</span> <span class="pre">symbol,</span> <span class="pre">price,</span> <span class="pre">return,</span> <span class="pre">sigma</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ohlc_from_close</span></code></p></td>
+<td><p>OHLCV synthesis from any close series</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">timestamp,</span> <span class="pre">symbol,</span> <span class="pre">open,</span> <span class="pre">high,</span> <span class="pre">low,</span> <span class="pre">close,</span> <span class="pre">volume</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="cross-sectional-panels-python">
+<h4>Cross-sectional panels (Python)<a class="headerlink" href="#cross-sectional-panels-python" title="Link to this heading">¶</a></h4>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Symbol</p></th>
+<th class="head"><p>Output</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">generate_signal</span></code></p></td>
+<td><p>Long-form <code class="docutils literal notranslate"><span class="pre">[date,</span> <span class="pre">symbol,</span> <span class="pre">signal,</span> <span class="pre">fwd_returns]</span></code> with target Pearson IC</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">generate_factor_loadings</span></code></p></td>
+<td><p>Wide <code class="docutils literal notranslate"><span class="pre">[symbol,</span> <span class="pre">market,</span> <span class="pre">value,</span> <span class="pre">momentum,</span> <span class="pre">size,</span> <span class="pre">quality]</span></code> Barra-style loadings</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">generate_benchmark</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[date,</span> <span class="pre">benchmark]</span></code> Gaussian benchmark return series</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>All Rust generators accept an optional <code class="docutils literal notranslate"><span class="pre">seed:</span> <span class="pre">int</span></code> for bit-reproducible
+output across platforms (ChaCha8 RNG); the cross-sectional generators
+accept a <code class="docutils literal notranslate"><span class="pre">seed</span></code> for <code class="docutils literal notranslate"><span class="pre">numpy.random.default_rng</span></code>.</p>
+</section>
+</section>
+<section id="quick-start">
+<h3>Quick start<a class="headerlink" href="#quick-start" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_datagen</span><span class="w"> </span><span class="kn">import</span> <span class="n">GBMGenerator</span><span class="p">,</span> <span class="n">ohlc_from_close</span>
+
+<span class="n">closes</span> <span class="o">=</span> <span class="n">GBMGenerator</span><span class="p">(</span><span class="n">s0</span><span class="o">=</span><span class="mf">100.0</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="mf">0.07</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span>
+<span class="n">bars</span>   <span class="o">=</span> <span class="n">ohlc_from_close</span><span class="p">(</span><span class="n">closes</span><span class="p">[</span><span class="s2">&quot;price&quot;</span><span class="p">],</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>See the <a class="reference internal" href="docs/src/DATA.html"><span class="std std-doc">Data</span></a> page for model math, parameter ranges,
+and output schemas, and the <a class="reference internal" href="docs/src/API.html"><span class="std std-doc">API</span></a> page for a complete
+function-level reference.</p>
+</section>
+<section id="architecture">
+<h3>Architecture<a class="headerlink" href="#architecture" title="Link to this heading">¶</a></h3>
+<p>The Rust core (<code class="docutils literal notranslate"><span class="pre">rust/src/</span></code>) is <strong>polars-free</strong>: every generator builds
+an <code class="docutils literal notranslate"><span class="pre">arrow_array::RecordBatch</span></code> and returns it through the
+<a class="reference external" href="https://arrow.apache.org/docs/format/CDataInterface.html">Arrow C Data Interface</a>
+PyCapsule via <code class="docutils literal notranslate"><span class="pre">pyo3-arrow</span></code>. The Python wrappers call
+<code class="docutils literal notranslate"><span class="pre">polars.from_arrow(batch)</span></code> on the receiving end. This keeps the
+polars-rs and polars-py codebases on opposite sides of a stable ABI
+boundary, avoiding the binary-incompatibility issues that come with
+linking polars from both Rust and CPython.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>This library was generated using <a class="reference external" href="https://copier.readthedocs.io/en/stable/">copier</a> from the <a class="reference external" href="https://github.com/python-project-templates/base">Base Python Project Template repository</a>.</p>
 </div>
+</section>
 </section>
 </section>
 
@@ -263,12 +349,12 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="autoapi/index.html">
+          <a class="next-page" href="docs/src/DATA.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">API Reference</div>
+                <div class="title">Data</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
