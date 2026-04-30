@@ -26,8 +26,6 @@ fn rb_to_py<'py>(
     Ok(PyRecordBatch::new(rb).into_pyarrow(py)?)
 }
 
-/* -------------------------------- GBM ------------------------------------ */
-
 #[pyclass(module = "finance_datagen")]
 pub struct GBMGenerator {
     cfg: CoreGbmConfig,
@@ -84,8 +82,6 @@ impl GBMGenerator {
         rb_to_py(py, rb)
     }
 }
-
-/* ------------------------------ Heston ----------------------------------- */
 
 #[pyclass(module = "finance_datagen")]
 pub struct HestonGenerator {
@@ -154,8 +150,6 @@ impl HestonGenerator {
     }
 }
 
-/* ------------------------------- GARCH ----------------------------------- */
-
 #[pyclass(module = "finance_datagen")]
 pub struct GARCHGenerator {
     cfg: CoreGarchConfig,
@@ -214,8 +208,6 @@ impl GARCHGenerator {
     }
 }
 
-/* ------------------------------- OHLCV ----------------------------------- */
-
 #[pyfunction]
 #[pyo3(signature = (
     close,
@@ -251,8 +243,6 @@ fn ohlc_from_close<'py>(
     let rb = core_ohlc_from_close(&close, &cfg).map_err(map_err)?;
     rb_to_py(py, rb)
 }
-
-/* ------------------------------ Module ----------------------------------- */
 
 #[pymodule]
 fn finance_datagen(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {

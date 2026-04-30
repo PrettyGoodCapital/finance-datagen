@@ -98,8 +98,6 @@ pub fn ohlc_from_close(close: &[f64], cfg: &OhlcConfig) -> DatagenResult<RecordB
     record_batch(ohlcv_schema(), columns)
 }
 
-/* -------------------------------------------------------------------------- */
-
 #[cfg(test)]
 mod tests {
     use super::*;
