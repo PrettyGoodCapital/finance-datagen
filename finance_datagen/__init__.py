@@ -16,27 +16,12 @@ from ._signals import (
     generate_factor_loadings,
     generate_signal,
 )
-
-try:
-    from .finance_datagen import (
-        GARCHGenerator as _RustGARCH,
-        GBMGenerator as _RustGBM,
-        HestonGenerator as _RustHeston,
-        ohlc_from_close as _rust_ohlc_from_close,
-    )
-except ImportError:  # pragma: no cover - docs / source-tree import path
-    # The compiled extension is unavailable (e.g. Sphinx importing the
-    # source tree, or an editable install before `cargo build`). Provide
-    # stubs so docstring introspection still works; any actual call will
-    # raise at instantiation time.
-    def _missing_ext(*_args, **_kwargs):
-        raise ImportError(
-            "finance_datagen native extension is not built. "
-            "Install the wheel or run `uv pip install -e .` to compile it."
-        )
-
-    _RustGARCH = _RustGBM = _RustHeston = _missing_ext
-    _rust_ohlc_from_close = _missing_ext
+from .finance_datagen import (
+    GARCHGenerator as _RustGARCH,
+    GBMGenerator as _RustGBM,
+    HestonGenerator as _RustHeston,
+    ohlc_from_close as _rust_ohlc_from_close,
+)
 
 __version__ = "0.1.0"
 
