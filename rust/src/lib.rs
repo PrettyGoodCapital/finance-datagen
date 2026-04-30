@@ -1,34 +1,23 @@
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Example {
-    pub stuff: String,
-}
+//! Pure-Rust core for finance-datagen.
+//!
+//! This crate is deliberately polars-free: every generator emits Apache
+//! Arrow `RecordBatch` values. The Python bindings hand those `RecordBatch`
+//! objects to Python via the Arrow C Data Interface (PyCapsule) and Python
+//! constructs the polars `DataFrame` on its side. This avoids the
+//! polars-Rust / polars-Python ABI mismatch.
 
-impl Example {
-    pub fn new(value: String) -> Self {
-        Example { stuff: value }
-    }
-}
+pub mod arrow_util;
+pub mod error;
+pub mod ohlc;
+pub mod rng;
+pub mod schema;
 
-/**********************************/
-#[cfg(test)]
-mod example_tests {
-    use super::*;
+pub mod garch;
+pub mod gbm;
+pub mod heston;
 
-    #[test]
-    fn test_new() {
-        let e = Example::new(String::from("test"));
-        assert_eq!(e.stuff, String::from("test"));
-    }
-
-    #[test]
-    fn test_clone_and_eq() {
-        let e = Example::new(String::from("test"));
-        assert_eq!(e, e.clone());
-    }
-
-    #[test]
-    fn test_debug() {
-        let e = Example::new(String::from("test"));
-        assert_eq!(format!("{e:?}"), "Example { stuff: \"test\" }");
-    }
-}
+pub use error::{DatagenError, DatagenResult};
+pub use garch::{GarchConfig, GarchGenerator};
+pub use gbm::{GbmConfig, GbmGenerator};
+pub use heston::{HestonConfig, HestonGenerator};
+pub use ohlc::{ohlc_from_close, OhlcConfig};

@@ -31,7 +31,10 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 
-dependencies = []
+dependencies = [
+    "polars>=1.0",
+    "pyarrow>=14",
+]
 
 [project.optional-dependencies]
 develop = [
@@ -51,6 +54,7 @@ develop = [
     "ty",
     "uv",
     "wheel",
+    "yardang",
 ]
 
 [project.scripts]
@@ -197,6 +201,8 @@ section-order = [
 [tool.yardang]
 title = "finance datagen"
 root = "README.md"
-pages = []
-use-autoapi = true
-
+pages = [
+    "docs/src/DATA.md",
+    "docs/src/API.md",
+]
+use-autoapi = false

@@ -12,6 +12,9 @@ crate-type = ["cdylib"]
 [dependencies]
 finance_datagen = { path = "./rust", version = "*" }
 pyo3 = { version = "0.28.2", features = ["abi3", "extension-module", "multiple-pymethods"] }
+pyo3-arrow = "0.17"
+arrow-array = "58"
+arrow-schema = "58"
 
 [profile.release]
 panic = 'abort'
