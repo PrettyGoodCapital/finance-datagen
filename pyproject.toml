@@ -33,7 +33,7 @@ classifiers = [
 
 dependencies = [
     "numpy",
-    "polars>=1.0",
+    "polars>=1.40.1",
     "pyarrow>=14",
 ]
 
