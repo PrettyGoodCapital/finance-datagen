@@ -32,7 +32,9 @@ classifiers = [
 ]
 
 dependencies = [
+    "finance-enums>=0.3.0",
     "numpy",
+    "pydantic>=2",
     "polars>=1.0",
     "pyarrow>=14",
 ]
