@@ -240,11 +240,16 @@
           <section class="tex2jax_ignore mathjax_ignore" id="data">
 <h1>Data<a class="headerlink" href="#data" title="Link to this heading">¶</a></h1>
 <p><code class="docutils literal notranslate"><span class="pre">finance-datagen</span></code> produces <strong>synthetic</strong> financial time series. Every
-generator emits an <a class="reference external" href="https://arrow.apache.org/">Apache Arrow</a>
+Rust generator emits an <a class="reference external" href="https://arrow.apache.org/">Apache Arrow</a>
 <code class="docutils literal notranslate"><span class="pre">RecordBatch</span></code> from a polars-free Rust core, which the Python layer
-wraps into a <code class="docutils literal notranslate"><span class="pre">polars.DataFrame</span></code> via the pyarrow PyCapsule interface.</p>
-<p>This page documents the data — the stochastic models, their parameters,
-and the schema of every output table.</p>
+wraps into a <code class="docutils literal notranslate"><span class="pre">polars.DataFrame</span></code> via the pyarrow PyCapsule interface.
+Python-only generators return polars <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> objects directly.
+All public generator classes inherit from <code class="docutils literal notranslate"><span class="pre">DataGenerator</span></code>, a pydantic
+base model that validates typed parameters at construction time. Each
+generator can be run with <code class="docutils literal notranslate"><span class="pre">.generate()</span></code> or with one-shot iterator syntax
+via <code class="docutils literal notranslate"><span class="pre">next(generator)</span></code>.</p>
+<p>This page documents the data: stochastic models, generator parameters,
+and output schemas.</p>
 <hr class="docutils" />
 <section id="conventions">
 <h2>Conventions<a class="headerlink" href="#conventions" title="Link to this heading">¶</a></h2>
@@ -258,45 +263,46 @@ and the schema of every output table.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p>Timestamp column</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">timestamp</span></code> of type <code class="docutils literal notranslate"><span class="pre">Timestamp(Millisecond,</span> <span class="pre">UTC)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">timestamp</span></code> of type <code class="docutils literal notranslate"><span class="pre">Timestamp(Millisecond,</span> <span class="pre">UTC)</span></code> unless noted otherwise</p></td>
 </tr>
 <tr class="row-odd"><td><p>Symbol column</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">symbol</span></code> of type <code class="docutils literal notranslate"><span class="pre">Utf8</span></code> (constant per generator instance)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">symbol</span></code> of type <code class="docutils literal notranslate"><span class="pre">Utf8</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>Numeric columns</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Float64</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>Path length</p></td>
-<td><p>A generator with <code class="docutils literal notranslate"><span class="pre">n_steps</span></code> returns <code class="docutils literal notranslate"><span class="pre">n_steps</span> <span class="pre">+</span> <span class="pre">1</span></code> rows (initial state + drawn)</p></td>
+<td><p>A path generator with <code class="docutils literal notranslate"><span class="pre">n_steps</span></code> returns <code class="docutils literal notranslate"><span class="pre">n_steps</span> <span class="pre">+</span> <span class="pre">1</span></code> rows</p></td>
 </tr>
 <tr class="row-even"><td><p>Time grid</p></td>
 <td><p>Uniform: <code class="docutils literal notranslate"><span class="pre">start_ms</span> <span class="pre">+</span> <span class="pre">i</span> <span class="pre">*</span> <span class="pre">step_ms</span></code> for <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">=</span> <span class="pre">0..=n_steps</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>Reproducibility</p></td>
-<td><p>Fixed <code class="docutils literal notranslate"><span class="pre">seed:</span> <span class="pre">int</span></code> → identical paths (ChaCha8 RNG)</p></td>
+<td><p>Fixed <code class="docutils literal notranslate"><span class="pre">seed:</span> <span class="pre">int</span></code> gives deterministic outputs for that generator family</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">dt</span></code> parameter (in years) controls the <em>modeling</em> time step used in
-the SDE discretization; <code class="docutils literal notranslate"><span class="pre">step_ms</span></code> controls only the timestamp column.
-They are independent — you can run a daily-frequency model
-(<code class="docutils literal notranslate"><span class="pre">dt</span> <span class="pre">=</span> <span class="pre">1/252</span></code>) on a wall-clock grid of seconds (<code class="docutils literal notranslate"><span class="pre">step_ms</span> <span class="pre">=</span> <span class="pre">1000</span></code>) for
-testing.</p>
+<p>Most generators also have a matching <code class="docutils literal notranslate"><span class="pre">generate_*</span></code> convenience function
+that instantiates the model for validation and returns <code class="docutils literal notranslate"><span class="pre">.generate()</span></code>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">dt</span></code> parameter controls the modeling time step used in SDE
+discretization; <code class="docutils literal notranslate"><span class="pre">step_ms</span></code> controls only the timestamp column. They are
+independent: a daily model (<code class="docutils literal notranslate"><span class="pre">dt</span> <span class="pre">=</span> <span class="pre">1/252</span></code>) can be emitted on a second or
+minute timestamp grid for testing.</p>
 </section>
 <hr class="docutils" />
 <section id="models">
 <h2>Models<a class="headerlink" href="#models" title="Link to this heading">¶</a></h2>
 <section id="geometric-brownian-motion-gbm">
 <h3>Geometric Brownian Motion (GBM)<a class="headerlink" href="#geometric-brownian-motion-gbm" title="Link to this heading">¶</a></h3>
-<p>The classic Black–Scholes log-normal price process.</p>
+<p>The classic Black-Scholes log-normal price process.</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
 \[
 dS_t = \mu S_t \, dt + \sigma S_t \, dW_t
 \]</div>
 </div>
-<p>Discretized exactly in log-space (no bias for any <code class="docutils literal notranslate"><span class="pre">dt</span></code>):</p>
+<p>Discretized exactly in log-space:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
 \[
@@ -304,7 +310,8 @@ S_{t+1} = S_t \exp\!\Big( (\mu - \tfrac{1}{2}\sigma^2)\,dt + \sigma\sqrt{dt}\,Z 
 \quad Z \sim \mathcal{N}(0, 1)
 \]</div>
 </div>
-<p><strong>Parameters</strong> (<code class="docutils literal notranslate"><span class="pre">GBMGenerator</span></code>)</p>
+<section id="gbm-parameters">
+<h4>GBM Parameters<a class="headerlink" href="#gbm-parameters" title="Link to this heading">¶</a></h4>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -320,15 +327,15 @@ S_{t+1} = S_t \exp\!\Big( (\mu - \tfrac{1}{2}\sigma^2)\,dt + \sigma\sqrt{dt}\,Z 
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">mu</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.05</span></code></p></td>
-<td><p>drift (annualized)</p></td>
+<td><p>drift, annualized</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sigma</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.2</span></code></p></td>
-<td><p>volatility (annualized), must be ≥ 0</p></td>
+<td><p>volatility, annualized and nonnegative</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">dt</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">1/252</span></code></p></td>
-<td><p>model time step (years)</p></td>
+<td><p>model time step in years</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">n_steps</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">252</span></code></p></td>
@@ -340,20 +347,22 @@ S_{t+1} = S_t \exp\!\Big( (\mu - \tfrac{1}{2}\sigma^2)\,dt + \sigma\sqrt{dt}\,Z 
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">start_ms</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
-<td><p>first timestamp (epoch ms, UTC)</p></td>
+<td><p>first timestamp, epoch ms UTC</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">step_ms</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">86_400_000</span></code></p></td>
-<td><p>timestamp grid spacing (1 day)</p></td>
+<td><p>timestamp spacing, one day by default</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>RNG seed for reproducibility</p></td>
+<td><p>RNG seed</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p><strong>Schema</strong></p>
+</section>
+<section id="gbm-schema">
+<h4>GBM Schema<a class="headerlink" href="#gbm-schema" title="Link to this heading">¶</a></h4>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -379,11 +388,12 @@ S_{t+1} = S_t \exp\!\Big( (\mu - \tfrac{1}{2}\sigma^2)\,dt + \sigma\sqrt{dt}\,Z 
 </table>
 </div>
 </section>
+</section>
 <hr class="docutils" />
-<section id="heston-1993-stochastic-volatility">
-<h3>Heston (1993) stochastic volatility<a class="headerlink" href="#heston-1993-stochastic-volatility" title="Link to this heading">¶</a></h3>
-<p>Two-factor SDE with mean-reverting variance and a correlated price
-process:</p>
+<section id="heston-stochastic-volatility">
+<h3>Heston Stochastic Volatility<a class="headerlink" href="#heston-stochastic-volatility" title="Link to this heading">¶</a></h3>
+<p>Two-factor SDE with mean-reverting variance and correlated price and
+variance shocks:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
 \[\begin{split}
@@ -394,9 +404,8 @@ dv_t &amp;= \kappa(\theta - v_t)\,dt + \xi\sqrt{v_t}\,dW_t^{v} \\
 \end{aligned}
 \end{split}\]</div>
 </div>
-<p>Discretized with <strong>full-truncation Euler</strong> on the variance — the
-standard remedy for the well-known negativity bug of plain Euler when
-the Feller condition <span class="math notranslate nohighlight">\(2\kappa\theta \ge \xi^2\)</span> is violated:</p>
+<p>The implementation uses full-truncation Euler on variance, then
+log-Euler on price:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
 \[\begin{split}
@@ -406,10 +415,9 @@ S_{t+1} &amp;= S_t \exp\!\Big( (\mu - \tfrac{1}{2}v_t^+)\,dt + \sqrt{v_t^+\,dt}\
 \end{aligned}
 \end{split}\]</div>
 </div>
-<p>where <span class="math notranslate nohighlight">\(v_t^+ = \max(v_t, 0)\)</span> and the correlated normals
-<span class="math notranslate nohighlight">\((Z_S, Z_v)\)</span> are produced via a 2×2 Cholesky factor of the correlation
-matrix with off-diagonal <span class="math notranslate nohighlight">\(\rho\)</span>.</p>
-<p><strong>Parameters</strong> (<code class="docutils literal notranslate"><span class="pre">HestonGenerator</span></code>)</p>
+<p>where <span class="math notranslate nohighlight">\(v_t^+ = \max(v_t, 0)\)</span>.</p>
+<section id="heston-parameters">
+<h4>Heston Parameters<a class="headerlink" href="#heston-parameters" title="Link to this heading">¶</a></h4>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -425,31 +433,31 @@ matrix with off-diagonal <span class="math notranslate nohighlight">\(\rho\)</sp
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">v0</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.04</span></code></p></td>
-<td><p>initial variance ≥ 0</p></td>
+<td><p>initial variance &gt;= 0</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mu</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.05</span></code></p></td>
-<td><p>risk-neutral / physical drift</p></td>
+<td><p>risk-neutral or physical drift</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">kappa</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">2.0</span></code></p></td>
-<td><p>mean-reversion speed (κ ≥ 0)</p></td>
+<td><p>mean-reversion speed, nonnegative</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">theta</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.04</span></code></p></td>
-<td><p>long-run variance (θ ≥ 0)</p></td>
+<td><p>long-run variance, nonnegative</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xi</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.3</span></code></p></td>
-<td><p>vol-of-vol (ξ ≥ 0)</p></td>
+<td><p>vol-of-vol, nonnegative</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">rho</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">-0.7</span></code></p></td>
-<td><p>leverage correlation, must satisfy `</p></td>
+<td><p>leverage correlation, must satisfy <code class="docutils literal notranslate"><span class="pre">abs(rho)</span> <span class="pre">&lt;=</span> <span class="pre">1</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">dt</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">1/252</span></code></p></td>
-<td><p>time step (years)</p></td>
+<td><p>model time step in years</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">n_steps</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">252</span></code></p></td>
@@ -458,7 +466,9 @@ matrix with off-diagonal <span class="math notranslate nohighlight">\(\rho\)</sp
 </tbody>
 </table>
 </div>
-<p><strong>Schema</strong></p>
+</section>
+<section id="heston-schema">
+<h4>Heston Schema<a class="headerlink" href="#heston-schema" title="Link to this heading">¶</a></h4>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -470,11 +480,11 @@ matrix with off-diagonal <span class="math notranslate nohighlight">\(\rho\)</sp
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">timestamp</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Timestamp(ms,</span> <span class="pre">UTC)</span></code></p></td>
-<td><p></p></td>
+<td><p>uniform grid</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">symbol</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Utf8</span></code></p></td>
-<td><p></p></td>
+<td><p>constant</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">price</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Float64</span></code></p></td>
@@ -482,31 +492,32 @@ matrix with off-diagonal <span class="math notranslate nohighlight">\(\rho\)</sp
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">variance</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Float64</span></code></p></td>
-<td><p>non-negative (post-truncation)</p></td>
+<td><p>nonnegative after truncation</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 </section>
+</section>
 <hr class="docutils" />
 <section id="garch-1-1-returns">
-<h3>GARCH(1,1) returns<a class="headerlink" href="#garch-1-1-returns" title="Link to this heading">¶</a></h3>
-<p>Discrete-time conditional-variance model in log-returns:</p>
+<h3>GARCH(1,1) Returns<a class="headerlink" href="#garch-1-1-returns" title="Link to this heading">¶</a></h3>
+<p>Discrete-time conditional-variance model in log returns:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
 \[\begin{split}
 \begin{aligned}
-r_t &amp;= \mu + \sigma_t\,Z_t,\quad Z_t \sim \mathcal{N}(0,1) \\
-\sigma_t^2 &amp;= \omega + \alpha\,\varepsilon_{t-1}^2 + \beta\,\sigma_{t-1}^2 \\
+r_t &amp;= \mu + \sigma_t Z_t,\quad Z_t \sim \mathcal{N}(0,1) \\
+\sigma_t^2 &amp;= \omega + \alpha\varepsilon_{t-1}^2 + \beta\sigma_{t-1}^2 \\
 \varepsilon_{t-1} &amp;= r_{t-1} - \mu
 \end{aligned}
 \end{split}\]</div>
 </div>
-<p>When the process is stationary (<span class="math notranslate nohighlight">\(\alpha + \beta &lt; 1\)</span>), <span class="math notranslate nohighlight">\(\sigma_0^2\)</span> is
-initialized to the unconditional variance
-<span class="math notranslate nohighlight">\(\bar{\sigma}^2 = \omega / (1 - \alpha - \beta)\)</span>. Otherwise it falls
-back to <span class="math notranslate nohighlight">\(\omega\)</span>.</p>
-<p><strong>Parameters</strong> (<code class="docutils literal notranslate"><span class="pre">GARCHGenerator</span></code>)</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">alpha</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">&lt;</span> <span class="pre">1</span></code>, the initial variance is the unconditional
+variance <code class="docutils literal notranslate"><span class="pre">omega</span> <span class="pre">/</span> <span class="pre">(1</span> <span class="pre">-</span> <span class="pre">alpha</span> <span class="pre">-</span> <span class="pre">beta)</span></code>. Otherwise it falls back to
+<code class="docutils literal notranslate"><span class="pre">omega</span></code>.</p>
+<section id="garch-parameters">
+<h4>GARCH Parameters<a class="headerlink" href="#garch-parameters" title="Link to this heading">¶</a></h4>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -522,19 +533,19 @@ back to <span class="math notranslate nohighlight">\(\omega\)</span>.</p>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">mu</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.0</span></code></p></td>
-<td><p>mean log-return</p></td>
+<td><p>mean log return</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">omega</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">1e-6</span></code></p></td>
-<td><p>constant variance term ≥ 0</p></td>
+<td><p>constant variance term &gt;= 0</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">alpha</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.05</span></code></p></td>
-<td><p>shock weight ≥ 0</p></td>
+<td><p>shock weight &gt;= 0</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">beta</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.90</span></code></p></td>
-<td><p>persistence weight ≥ 0</p></td>
+<td><p>persistence weight &gt;= 0</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">n_steps</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">252</span></code></p></td>
@@ -543,7 +554,9 @@ back to <span class="math notranslate nohighlight">\(\omega\)</span>.</p>
 </tbody>
 </table>
 </div>
-<p><strong>Schema</strong></p>
+</section>
+<section id="garch-schema">
+<h4>GARCH Schema<a class="headerlink" href="#garch-schema" title="Link to this heading">¶</a></h4>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -555,15 +568,15 @@ back to <span class="math notranslate nohighlight">\(\omega\)</span>.</p>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">timestamp</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Timestamp(ms,</span> <span class="pre">UTC)</span></code></p></td>
-<td><p></p></td>
+<td><p>uniform grid</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">symbol</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Utf8</span></code></p></td>
-<td><p></p></td>
+<td><p>constant</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">price</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Float64</span></code></p></td>
-<td><p><span class="math notranslate nohighlight">\(S_t = S_{t-1} e^{r_t}\)</span></p></td>
+<td><p>updated with <code class="docutils literal notranslate"><span class="pre">S_t</span> <span class="pre">=</span> <span class="pre">S_{t-1}</span> <span class="pre">exp(r_t)</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">return</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Float64</span></code></p></td>
@@ -577,13 +590,12 @@ back to <span class="math notranslate nohighlight">\(\omega\)</span>.</p>
 </table>
 </div>
 </section>
+</section>
 <hr class="docutils" />
-<section id="ohlcv-synthesis-from-a-close-series">
-<h3>OHLCV synthesis from a close series<a class="headerlink" href="#ohlcv-synthesis-from-a-close-series" title="Link to this heading">¶</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">ohlc_from_close()</span></code> is a utility, not a stochastic model: it takes any
-existing series of close prices (typically the <code class="docutils literal notranslate"><span class="pre">price</span></code> column from one
-of the generators above) and synthesizes plausible Open/High/Low/Volume
-columns around it.</p>
+<section id="ohlcv-synthesis-from-close">
+<h3>OHLCV Synthesis From Close<a class="headerlink" href="#ohlcv-synthesis-from-close" title="Link to this heading">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">ohlc_from_close()</span></code> takes any close series and synthesizes plausible
+Open/High/Low/Volume columns around it.</p>
 <p>For each bar <code class="docutils literal notranslate"><span class="pre">i</span></code>:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>open_i  = close_{i-1}                          (open_0 = close_0)
 high_i  = max(open_i, close_i) * (1 + |U_1| * intrabar_vol)
@@ -592,10 +604,10 @@ ret_i   = log(close_i / close_{i-1})           (ret_0 = 0)
 vol_i   = base_volume + vol_factor * |ret_i|
 </pre></div>
 </div>
-<p>with <span class="math notranslate nohighlight">\(U_1, U_2 \sim \mathcal{U}(0, 1)\)</span> independent. This guarantees the
-canonical bar invariants <code class="docutils literal notranslate"><span class="pre">high</span> <span class="pre">≥</span> <span class="pre">max(open,</span> <span class="pre">close)</span></code> and
-<code class="docutils literal notranslate"><span class="pre">low</span> <span class="pre">≤</span> <span class="pre">min(open,</span> <span class="pre">close)</span></code> regardless of the <code class="docutils literal notranslate"><span class="pre">intrabar_vol</span></code> setting.</p>
-<p><strong>Parameters</strong></p>
+<p>This guarantees <code class="docutils literal notranslate"><span class="pre">high</span> <span class="pre">&gt;=</span> <span class="pre">max(open,</span> <span class="pre">close)</span></code> and
+<code class="docutils literal notranslate"><span class="pre">low</span> <span class="pre">&lt;=</span> <span class="pre">min(open,</span> <span class="pre">close)</span></code>.</p>
+<section id="ohlcv-parameters">
+<h4>OHLCV Parameters<a class="headerlink" href="#ohlcv-parameters" title="Link to this heading">¶</a></h4>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -606,8 +618,8 @@ canonical bar invariants <code class="docutils literal notranslate"><span class=
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">close</span></code></p></td>
-<td><p>(required)</p></td>
-<td><p>iterable / list / numpy / <code class="docutils literal notranslate"><span class="pre">pl.Series</span></code> of floats</p></td>
+<td><p>required</p></td>
+<td><p>iterable, numpy array, or <code class="docutils literal notranslate"><span class="pre">pl.Series</span></code> of floats</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">intrabar_vol</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.005</span></code></p></td>
@@ -619,19 +631,19 @@ canonical bar invariants <code class="docutils literal notranslate"><span class=
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">vol_factor</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">5e7</span></code></p></td>
-<td><p>volume sensitivity to absolute log-return</p></td>
+<td><p>volume sensitivity to absolute log return</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">symbol</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">&quot;SYM&quot;</span></code></p></td>
-<td><p></p></td>
+<td><p>symbol label</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">start_ms</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
-<td><p></p></td>
+<td><p>first timestamp, epoch ms UTC</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">step_ms</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">86_400_000</span></code></p></td>
-<td><p></p></td>
+<td><p>timestamp spacing</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
@@ -640,7 +652,9 @@ canonical bar invariants <code class="docutils literal notranslate"><span class=
 </tbody>
 </table>
 </div>
-<p><strong>Schema</strong></p>
+</section>
+<section id="ohlcv-schema">
+<h4>OHLCV Schema<a class="headerlink" href="#ohlcv-schema" title="Link to this heading">¶</a></h4>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -675,19 +689,20 @@ canonical bar invariants <code class="docutils literal notranslate"><span class=
 </div>
 </section>
 </section>
+</section>
 <hr class="docutils" />
 <section id="cross-sectional-panels">
-<h2>Cross-sectional panels<a class="headerlink" href="#cross-sectional-panels" title="Link to this heading">¶</a></h2>
-<p>Three pure-Python helpers produce panels for testing alpha / risk
-calculations that operate over <code class="docutils literal notranslate"><span class="pre">(date,</span> <span class="pre">symbol)</span></code> pairs. They use
-<code class="docutils literal notranslate"><span class="pre">numpy.random.default_rng(seed)</span></code> rather than the Rust ChaCha8 RNG;
-seeded outputs are reproducible within a single numpy version.</p>
-<section id="generate-signal">
-<h3><code class="docutils literal notranslate"><span class="pre">generate_signal</span></code><a class="headerlink" href="#generate-signal" title="Link to this heading">¶</a></h3>
+<h2>Cross-Sectional Panels<a class="headerlink" href="#cross-sectional-panels" title="Link to this heading">¶</a></h2>
+<p>Three pydantic generator models produce panels for testing alpha and
+risk code that operates over <code class="docutils literal notranslate"><span class="pre">(date,</span> <span class="pre">symbol)</span></code> pairs. The legacy
+<code class="docutils literal notranslate"><span class="pre">generate_signal</span></code>, <code class="docutils literal notranslate"><span class="pre">generate_factor_loadings</span></code>, and <code class="docutils literal notranslate"><span class="pre">generate_benchmark</span></code>
+helpers remain as thin wrappers around the matching model classes. They
+use <code class="docutils literal notranslate"><span class="pre">numpy.random.default_rng(seed)</span></code>.</p>
+<section id="signalgenerator">
+<h3><code class="docutils literal notranslate"><span class="pre">SignalGenerator</span></code><a class="headerlink" href="#signalgenerator" title="Link to this heading">¶</a></h3>
 <p>Long-form panel <code class="docutils literal notranslate"><span class="pre">[date,</span> <span class="pre">symbol,</span> <span class="pre">signal,</span> <span class="pre">fwd_returns]</span></code> constructed so
 that the cross-sectional Pearson IC of <code class="docutils literal notranslate"><span class="pre">signal</span></code> against <code class="docutils literal notranslate"><span class="pre">fwd_returns</span></code>
-is approximately <code class="docutils literal notranslate"><span class="pre">ic</span></code> per date. The signal is built from the
-standardised forward returns plus orthogonal noise:</p>
+is approximately <code class="docutils literal notranslate"><span class="pre">ic</span></code> per date:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
 \[
@@ -717,7 +732,7 @@ standardised forward returns plus orthogonal noise:</p>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">return_vol</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.02</span></code></p></td>
-<td><p>cross-sectional std of forward returns</p></td>
+<td><p>cross-sectional standard deviation of fwd returns</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
@@ -734,37 +749,14 @@ standardised forward returns plus orthogonal noise:</p>
 </tbody>
 </table>
 </div>
-<p>Output schema:</p>
-<div class="table-wrapper colwidths-auto docutils container">
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p>Column</p></th>
-<th class="head"><p>Type</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">date</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Date</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">symbol</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Utf8</span></code></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">signal</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Float64</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fwd_returns</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Float64</span></code></p></td>
-</tr>
-</tbody>
-</table>
-</div>
+<p>Output schema: <code class="docutils literal notranslate"><span class="pre">date</span></code>, <code class="docutils literal notranslate"><span class="pre">symbol</span></code>, <code class="docutils literal notranslate"><span class="pre">signal</span></code>, <code class="docutils literal notranslate"><span class="pre">fwd_returns</span></code>.</p>
+<p>Convenience wrapper: <code class="docutils literal notranslate"><span class="pre">generate_signal(...)</span></code>.</p>
 </section>
-<section id="generate-factor-loadings">
-<h3><code class="docutils literal notranslate"><span class="pre">generate_factor_loadings</span></code><a class="headerlink" href="#generate-factor-loadings" title="Link to this heading">¶</a></h3>
-<p>Wide-form Barra-style factor loadings, one row per asset.</p>
-<p>The <code class="docutils literal notranslate"><span class="pre">market</span></code> factor (when present) is set to 1.0 for every asset.
-Every other factor is drawn iid <span class="math notranslate nohighlight">\(\mathcal{N}(0, 1)\)</span> and standardised
-cross-sectionally to mean zero, unit std (population, <code class="docutils literal notranslate"><span class="pre">ddof=0</span></code>).</p>
+<section id="factorloadingsgenerator">
+<h3><code class="docutils literal notranslate"><span class="pre">FactorLoadingsGenerator</span></code><a class="headerlink" href="#factorloadingsgenerator" title="Link to this heading">¶</a></h3>
+<p>Wide-form Barra-style factor loadings, one row per asset. The <code class="docutils literal notranslate"><span class="pre">market</span></code>
+factor is set to 1.0 when present. Other factors are drawn from a
+standard normal distribution and standardized cross-sectionally.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -780,7 +772,7 @@ cross-sectionally to mean zero, unit std (population, <code class="docutils lite
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">factors</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(&quot;market&quot;,</span> <span class="pre">&quot;value&quot;,</span> <span class="pre">&quot;momentum&quot;,</span> <span class="pre">&quot;size&quot;,</span> <span class="pre">&quot;quality&quot;)</span></code></p></td>
-<td><p>column names</p></td>
+<td><p>factor columns</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
@@ -793,12 +785,13 @@ cross-sectionally to mean zero, unit std (population, <code class="docutils lite
 </tbody>
 </table>
 </div>
-<p>Output schema: <code class="docutils literal notranslate"><span class="pre">symbol</span></code> (<code class="docutils literal notranslate"><span class="pre">Utf8</span></code>) plus one <code class="docutils literal notranslate"><span class="pre">Float64</span></code> column per factor.</p>
+<p>Output schema: <code class="docutils literal notranslate"><span class="pre">symbol</span></code> plus one numeric column per factor.</p>
+<p>Convenience wrapper: <code class="docutils literal notranslate"><span class="pre">generate_factor_loadings(...)</span></code>.</p>
 </section>
-<section id="generate-benchmark">
-<h3><code class="docutils literal notranslate"><span class="pre">generate_benchmark</span></code><a class="headerlink" href="#generate-benchmark" title="Link to this heading">¶</a></h3>
-<p>Independent Gaussian benchmark return series with target annualised
-mean <code class="docutils literal notranslate"><span class="pre">annual_return</span></code> and target annualised volatility <code class="docutils literal notranslate"><span class="pre">annual_vol</span></code>.</p>
+<section id="benchmarkgenerator">
+<h3><code class="docutils literal notranslate"><span class="pre">BenchmarkGenerator</span></code><a class="headerlink" href="#benchmarkgenerator" title="Link to this heading">¶</a></h3>
+<p>Independent Gaussian benchmark return series with target annualized mean
+and volatility.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -814,15 +807,15 @@ mean <code class="docutils literal notranslate"><span class="pre">annual_return<
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">annual_return</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.08</span></code></p></td>
-<td><p>target annualised mean</p></td>
+<td><p>target annualized mean</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">annual_vol</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.16</span></code></p></td>
-<td><p>target annualised volatility</p></td>
+<td><p>target annualized volatility</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">periods_per_year</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">252</span></code></p></td>
-<td><p>annualisation factor</p></td>
+<td><p>annualization factor</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
@@ -835,34 +828,238 @@ mean <code class="docutils literal notranslate"><span class="pre">annual_return<
 </tbody>
 </table>
 </div>
-<p>Output schema:</p>
+<p>Output schema: <code class="docutils literal notranslate"><span class="pre">date</span></code>, <code class="docutils literal notranslate"><span class="pre">benchmark</span></code>.</p>
+<p>Convenience wrapper: <code class="docutils literal notranslate"><span class="pre">generate_benchmark(...)</span></code>.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="portfolio-and-transaction-generators">
+<h2>Portfolio and Transaction Generators<a class="headerlink" href="#portfolio-and-transaction-generators" title="Link to this heading">¶</a></h2>
+<p>These Python generators create deterministic post-trade fixtures for
+turnover, transaction cost, and execution quality tests.</p>
+<section id="positionsgenerator">
+<h3><code class="docutils literal notranslate"><span class="pre">PositionsGenerator</span></code><a class="headerlink" href="#positionsgenerator" title="Link to this heading">¶</a></h3>
+<p>Long-form position panel with one row per <code class="docutils literal notranslate"><span class="pre">(date,</span> <span class="pre">symbol)</span></code>. Per-date
+absolute weights are normalized to <code class="docutils literal notranslate"><span class="pre">gross_exposure</span></code>; <code class="docutils literal notranslate"><span class="pre">market_value</span></code> is
+<code class="docutils literal notranslate"><span class="pre">weight</span> <span class="pre">*</span> <span class="pre">portfolio_value</span></code>, and <code class="docutils literal notranslate"><span class="pre">quantity</span></code> is <code class="docutils literal notranslate"><span class="pre">market_value</span> <span class="pre">/</span> <span class="pre">price</span></code>.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Column</p></th>
-<th class="head"><p>Type</p></th>
+<tr class="row-odd"><th class="head"><p>Param</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">date</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Date</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">n_dates</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">252</span></code></p></td>
+<td><p>number of dates</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">benchmark</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Float64</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">n_assets</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">50</span></code></p></td>
+<td><p>assets per date</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">portfolio_value</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1_000_000.0</span></code></p></td>
+<td><p>equity denominator for market value</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">gross_exposure</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1.0</span></code></p></td>
+<td><p>per-date sum of absolute weights</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">average_price</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">100.0</span></code></p></td>
+<td><p>center of synthetic price distribution</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">price_vol</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.02</span></code></p></td>
+<td><p>daily log-return volatility for marks</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>numpy RNG seed</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">start</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">2020-01-01</span></code></p></td>
+<td><p>first date</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">symbols</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>optional explicit symbol list</p></td>
 </tr>
 </tbody>
 </table>
 </div>
+<p>Output schema: <code class="docutils literal notranslate"><span class="pre">date</span></code>, <code class="docutils literal notranslate"><span class="pre">symbol</span></code>, <code class="docutils literal notranslate"><span class="pre">price</span></code>, <code class="docutils literal notranslate"><span class="pre">quantity</span></code>, <code class="docutils literal notranslate"><span class="pre">market_value</span></code>,
+<code class="docutils literal notranslate"><span class="pre">weight</span></code>.</p>
+<p>Convenience wrapper: <code class="docutils literal notranslate"><span class="pre">generate_positions(...)</span></code>.</p>
+</section>
+<section id="transactionsgenerator">
+<h3><code class="docutils literal notranslate"><span class="pre">TransactionsGenerator</span></code><a class="headerlink" href="#transactionsgenerator" title="Link to this heading">¶</a></h3>
+<p>Synthetic transaction log with enum-backed <code class="docutils literal notranslate"><span class="pre">side</span></code> and <code class="docutils literal notranslate"><span class="pre">position_effect</span></code>
+labels from <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code>. <code class="docutils literal notranslate"><span class="pre">amount</span></code> is positive for <code class="docutils literal notranslate"><span class="pre">Buy</span></code> and
+negative for <code class="docutils literal notranslate"><span class="pre">Sell</span></code>; opening and closing intent is represented by
+<code class="docutils literal notranslate"><span class="pre">position_effect</span></code>. <code class="docutils literal notranslate"><span class="pre">notional</span></code> is <code class="docutils literal notranslate"><span class="pre">abs(amount)</span> <span class="pre">*</span> <span class="pre">price</span></code>; <code class="docutils literal notranslate"><span class="pre">fees</span></code> are
+computed from <code class="docutils literal notranslate"><span class="pre">fee_bps</span></code>.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Param</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">n_dates</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">252</span></code></p></td>
+<td><p>number of trade dates</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">n_assets</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">50</span></code></p></td>
+<td><p>symbol universe size</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">trades_per_day</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">25</span></code></p></td>
+<td><p>rows per date</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">average_price</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">100.0</span></code></p></td>
+<td><p>center of trade-price distribution</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">price_vol</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.25</span></code></p></td>
+<td><p>lognormal price dispersion</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">max_amount</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1_000</span></code></p></td>
+<td><p>max absolute share amount per row</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">commission</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1.0</span></code></p></td>
+<td><p>explicit commission per trade</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fee_bps</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.2</span></code></p></td>
+<td><p>explicit fee rate in basis points</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">bps</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">5.0</span></code></p></td>
+<td><p>slippage or cost assumption column</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>numpy RNG seed</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">start</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">2020-01-01</span></code></p></td>
+<td><p>first trade date</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">symbols</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>optional explicit symbol list</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Output schema: <code class="docutils literal notranslate"><span class="pre">timestamp</span></code>, <code class="docutils literal notranslate"><span class="pre">symbol</span></code>, <code class="docutils literal notranslate"><span class="pre">amount</span></code>, <code class="docutils literal notranslate"><span class="pre">price</span></code>, <code class="docutils literal notranslate"><span class="pre">side</span></code>,
+<code class="docutils literal notranslate"><span class="pre">position_effect</span></code>, <code class="docutils literal notranslate"><span class="pre">notional</span></code>, <code class="docutils literal notranslate"><span class="pre">commission</span></code>, <code class="docutils literal notranslate"><span class="pre">fees</span></code>, <code class="docutils literal notranslate"><span class="pre">bps</span></code>.</p>
+<p>Convenience wrapper: <code class="docutils literal notranslate"><span class="pre">generate_transactions(...)</span></code>.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="multi-asset-regime-and-market-impact-generators">
+<h2>Multi-Asset, Regime, and Market-Impact Generators<a class="headerlink" href="#multi-asset-regime-and-market-impact-generators" title="Link to this heading">¶</a></h2>
+<section id="multiassetgbmgenerator">
+<h3><code class="docutils literal notranslate"><span class="pre">MultiAssetGBMGenerator</span></code><a class="headerlink" href="#multiassetgbmgenerator" title="Link to this heading">¶</a></h3>
+<p>Correlated multi-asset GBM with either a constant off-diagonal
+correlation <code class="docutils literal notranslate"><span class="pre">rho</span></code> or a caller-provided correlation matrix <code class="docutils literal notranslate"><span class="pre">corr</span></code>. The
+output is long-form <code class="docutils literal notranslate"><span class="pre">[timestamp,</span> <span class="pre">symbol,</span> <span class="pre">price,</span> <span class="pre">return]</span></code>; the first row
+for each symbol has <code class="docutils literal notranslate"><span class="pre">return</span> <span class="pre">=</span> <span class="pre">0.0</span></code>.</p>
+<p>Convenience wrapper: <code class="docutils literal notranslate"><span class="pre">generate_multi_asset_gbm(...)</span></code>.</p>
+</section>
+<section id="regimeswitchinggenerator">
+<h3><code class="docutils literal notranslate"><span class="pre">RegimeSwitchingGenerator</span></code><a class="headerlink" href="#regimeswitchinggenerator" title="Link to this heading">¶</a></h3>
+<p>Single-symbol Markov regime-switching path. The transition matrix rows
+must sum to one. Regime-specific means and volatilities generate log
+returns, and the output includes an integer <code class="docutils literal notranslate"><span class="pre">regime</span></code> label per timestamp.</p>
+<p>Convenience wrapper: <code class="docutils literal notranslate"><span class="pre">generate_regime_switching(...)</span></code>.</p>
+</section>
+<section id="marketimpactcurvegenerator">
+<h3><code class="docutils literal notranslate"><span class="pre">MarketImpactCurveGenerator</span></code><a class="headerlink" href="#marketimpactcurvegenerator" title="Link to this heading">¶</a></h3>
+<p>Generates participation-rate curves for temporary and permanent market
+impact. The default model uses square-root temporary impact and linear
+permanent impact:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>temporary_impact_bps = temporary_impact_coef * volatility * sqrt(participation_rate) * 10_000
+permanent_impact_bps = permanent_impact_coef * volatility * participation_rate * 10_000
+</pre></div>
+</div>
+<p>Output schema: <code class="docutils literal notranslate"><span class="pre">symbol</span></code>, <code class="docutils literal notranslate"><span class="pre">participation_rate</span></code>, <code class="docutils literal notranslate"><span class="pre">adv</span></code>, <code class="docutils literal notranslate"><span class="pre">volatility</span></code>,
+<code class="docutils literal notranslate"><span class="pre">temporary_impact_bps</span></code>, <code class="docutils literal notranslate"><span class="pre">permanent_impact_bps</span></code>, <code class="docutils literal notranslate"><span class="pre">total_impact_bps</span></code>.</p>
+<p>Convenience wrapper: <code class="docutils literal notranslate"><span class="pre">generate_market_impact_curve(...)</span></code>.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="risk-model-generators">
+<h2>Risk-Model Generators<a class="headerlink" href="#risk-model-generators" title="Link to this heading">¶</a></h2>
+<section id="statisticalriskmodelgenerator">
+<h3><code class="docutils literal notranslate"><span class="pre">StatisticalRiskModelGenerator</span></code><a class="headerlink" href="#statisticalriskmodelgenerator" title="Link to this heading">¶</a></h3>
+<p>Creates a synthetic asset-return matrix from latent factors, then fits a
+PCA-style statistical risk model. <code class="docutils literal notranslate"><span class="pre">.generate()</span></code> returns a dictionary
+with three polars frames:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Schema</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">factor_loadings</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">symbol</span></code>, <code class="docutils literal notranslate"><span class="pre">factor_1</span></code>, …, <code class="docutils literal notranslate"><span class="pre">factor_n</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">factor_returns</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">date</span></code>, <code class="docutils literal notranslate"><span class="pre">factor_1</span></code>, …, <code class="docutils literal notranslate"><span class="pre">factor_n</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">specific_variance</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">symbol</span></code>, <code class="docutils literal notranslate"><span class="pre">specific_variance</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Convenience wrapper: <code class="docutils literal notranslate"><span class="pre">generate_statistical_risk_model(...)</span></code>.</p>
+</section>
+<section id="fundamentalriskmodelgenerator">
+<h3><code class="docutils literal notranslate"><span class="pre">FundamentalRiskModelGenerator</span></code><a class="headerlink" href="#fundamentalriskmodelgenerator" title="Link to this heading">¶</a></h3>
+<p>Creates Barra-style factor loadings with a categorical <code class="docutils literal notranslate"><span class="pre">sector</span></code> drawn
+from the <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code> sector taxonomy, a constant <code class="docutils literal notranslate"><span class="pre">market</span></code> exposure
+of <code class="docutils literal notranslate"><span class="pre">1.0</span></code>, standardized style factors
+(<code class="docutils literal notranslate"><span class="pre">value</span></code>, <code class="docutils literal notranslate"><span class="pre">momentum</span></code>, <code class="docutils literal notranslate"><span class="pre">size</span></code>, <code class="docutils literal notranslate"><span class="pre">quality</span></code>, <code class="docutils literal notranslate"><span class="pre">low_vol</span></code>, <code class="docutils literal notranslate"><span class="pre">growth</span></code> by
+default), and positive <code class="docutils literal notranslate"><span class="pre">specific_variance</span></code>.</p>
+<p>Convenience wrapper: <code class="docutils literal notranslate"><span class="pre">generate_fundamental_risk_model(...)</span></code>.</p>
+</section>
+<section id="factorcovariancegenerator">
+<h3><code class="docutils literal notranslate"><span class="pre">FactorCovarianceGenerator</span></code><a class="headerlink" href="#factorcovariancegenerator" title="Link to this heading">¶</a></h3>
+<p>Creates a symmetric positive semidefinite covariance matrix with a
+leading <code class="docutils literal notranslate"><span class="pre">factor</span></code> label column and one numeric column per factor. Factor
+volatilities decay by <code class="docutils literal notranslate"><span class="pre">eigen_decay</span></code>, and cross-factor correlations decay
+with factor distance.</p>
+<p>Convenience wrapper: <code class="docutils literal notranslate"><span class="pre">generate_factor_covariance(...)</span></code>.</p>
+</section>
+<section id="specificvariancegenerator">
+<h3><code class="docutils literal notranslate"><span class="pre">SpecificVarianceGenerator</span></code><a class="headerlink" href="#specificvariancegenerator" title="Link to this heading">¶</a></h3>
+<p>Creates a positive idiosyncratic variance vector with lognormal
+dispersion around <code class="docutils literal notranslate"><span class="pre">target_vol</span> <span class="pre">**</span> <span class="pre">2</span></code>.</p>
+<p>Convenience wrapper: <code class="docutils literal notranslate"><span class="pre">generate_specific_variance(...)</span></code>.</p>
 </section>
 </section>
 <hr class="docutils" />
 <section id="reproducibility">
 <h2>Reproducibility<a class="headerlink" href="#reproducibility" title="Link to this heading">¶</a></h2>
 <p>Every generator and <code class="docutils literal notranslate"><span class="pre">ohlc_from_close</span></code> accept an optional <code class="docutils literal notranslate"><span class="pre">seed:</span> <span class="pre">int</span></code>.
-Internally the seed initializes a <code class="docutils literal notranslate"><span class="pre">ChaCha8</span></code> PRNG (via <code class="docutils literal notranslate"><span class="pre">rand_chacha</span></code>),
-which is portable across platforms and architectures: the same seed
-will produce bit-identical outputs on Linux/macOS/Windows and on
-x86-64/aarch64.</p>
+Rust generators initialize a <code class="docutils literal notranslate"><span class="pre">ChaCha8</span></code> PRNG (via <code class="docutils literal notranslate"><span class="pre">rand_chacha</span></code>), which
+is portable across platforms and architectures. Python generators
+initialize <code class="docutils literal notranslate"><span class="pre">numpy.random.default_rng(seed)</span></code> and are deterministic within
+the same numpy version.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_datagen</span><span class="w"> </span><span class="kn">import</span> <span class="n">GBMGenerator</span>
 
 <span class="n">a</span> <span class="o">=</span> <span class="n">GBMGenerator</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span>
@@ -883,7 +1080,7 @@ Arrow is a stable, language-agnostic columnar format: the Rust side
 builds an <code class="docutils literal notranslate"><span class="pre">arrow_array::RecordBatch</span></code>, hands it to Python over the
 <a class="reference external" href="https://arrow.apache.org/docs/format/CDataInterface.html">Arrow C Data Interface</a>
 PyCapsule, and the Python side calls <code class="docutils literal notranslate"><span class="pre">polars.from_arrow(batch)</span></code> to wrap
-the same buffers (zero-copy) into a <code class="docutils literal notranslate"><span class="pre">polars.DataFrame</span></code>.</p>
+the same buffers into a <code class="docutils literal notranslate"><span class="pre">polars.DataFrame</span></code>.</p>
 <p>If you prefer to skip the polars wrapping, you can pull the raw
 <code class="docutils literal notranslate"><span class="pre">pyarrow.RecordBatch</span></code> out of the Rust extension directly:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_datagen.finance_datagen</span><span class="w"> </span><span class="kn">import</span> <span class="n">GBMGenerator</span> <span class="k">as</span> <span class="n">RustGBM</span>
@@ -952,16 +1149,50 @@ the same buffers (zero-copy) into a <code class="docutils literal notranslate"><
 <li><a class="reference internal" href="#">Data</a><ul>
 <li><a class="reference internal" href="#conventions">Conventions</a></li>
 <li><a class="reference internal" href="#models">Models</a><ul>
-<li><a class="reference internal" href="#geometric-brownian-motion-gbm">Geometric Brownian Motion (GBM)</a></li>
-<li><a class="reference internal" href="#heston-1993-stochastic-volatility">Heston (1993) stochastic volatility</a></li>
-<li><a class="reference internal" href="#garch-1-1-returns">GARCH(1,1) returns</a></li>
-<li><a class="reference internal" href="#ohlcv-synthesis-from-a-close-series">OHLCV synthesis from a close series</a></li>
+<li><a class="reference internal" href="#geometric-brownian-motion-gbm">Geometric Brownian Motion (GBM)</a><ul>
+<li><a class="reference internal" href="#gbm-parameters">GBM Parameters</a></li>
+<li><a class="reference internal" href="#gbm-schema">GBM Schema</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#cross-sectional-panels">Cross-sectional panels</a><ul>
-<li><a class="reference internal" href="#generate-signal"><code class="docutils literal notranslate"><span class="pre">generate_signal</span></code></a></li>
-<li><a class="reference internal" href="#generate-factor-loadings"><code class="docutils literal notranslate"><span class="pre">generate_factor_loadings</span></code></a></li>
-<li><a class="reference internal" href="#generate-benchmark"><code class="docutils literal notranslate"><span class="pre">generate_benchmark</span></code></a></li>
+<li><a class="reference internal" href="#heston-stochastic-volatility">Heston Stochastic Volatility</a><ul>
+<li><a class="reference internal" href="#heston-parameters">Heston Parameters</a></li>
+<li><a class="reference internal" href="#heston-schema">Heston Schema</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#garch-1-1-returns">GARCH(1,1) Returns</a><ul>
+<li><a class="reference internal" href="#garch-parameters">GARCH Parameters</a></li>
+<li><a class="reference internal" href="#garch-schema">GARCH Schema</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#ohlcv-synthesis-from-close">OHLCV Synthesis From Close</a><ul>
+<li><a class="reference internal" href="#ohlcv-parameters">OHLCV Parameters</a></li>
+<li><a class="reference internal" href="#ohlcv-schema">OHLCV Schema</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#cross-sectional-panels">Cross-Sectional Panels</a><ul>
+<li><a class="reference internal" href="#signalgenerator"><code class="docutils literal notranslate"><span class="pre">SignalGenerator</span></code></a></li>
+<li><a class="reference internal" href="#factorloadingsgenerator"><code class="docutils literal notranslate"><span class="pre">FactorLoadingsGenerator</span></code></a></li>
+<li><a class="reference internal" href="#benchmarkgenerator"><code class="docutils literal notranslate"><span class="pre">BenchmarkGenerator</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#portfolio-and-transaction-generators">Portfolio and Transaction Generators</a><ul>
+<li><a class="reference internal" href="#positionsgenerator"><code class="docutils literal notranslate"><span class="pre">PositionsGenerator</span></code></a></li>
+<li><a class="reference internal" href="#transactionsgenerator"><code class="docutils literal notranslate"><span class="pre">TransactionsGenerator</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#multi-asset-regime-and-market-impact-generators">Multi-Asset, Regime, and Market-Impact Generators</a><ul>
+<li><a class="reference internal" href="#multiassetgbmgenerator"><code class="docutils literal notranslate"><span class="pre">MultiAssetGBMGenerator</span></code></a></li>
+<li><a class="reference internal" href="#regimeswitchinggenerator"><code class="docutils literal notranslate"><span class="pre">RegimeSwitchingGenerator</span></code></a></li>
+<li><a class="reference internal" href="#marketimpactcurvegenerator"><code class="docutils literal notranslate"><span class="pre">MarketImpactCurveGenerator</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#risk-model-generators">Risk-Model Generators</a><ul>
+<li><a class="reference internal" href="#statisticalriskmodelgenerator"><code class="docutils literal notranslate"><span class="pre">StatisticalRiskModelGenerator</span></code></a></li>
+<li><a class="reference internal" href="#fundamentalriskmodelgenerator"><code class="docutils literal notranslate"><span class="pre">FundamentalRiskModelGenerator</span></code></a></li>
+<li><a class="reference internal" href="#factorcovariancegenerator"><code class="docutils literal notranslate"><span class="pre">FactorCovarianceGenerator</span></code></a></li>
+<li><a class="reference internal" href="#specificvariancegenerator"><code class="docutils literal notranslate"><span class="pre">SpecificVarianceGenerator</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#reproducibility">Reproducibility</a></li>

@@ -240,11 +240,35 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">._base</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataGenerator</span><span class="p">,</span> <span class="n">NonNegativeFloat</span><span class="p">,</span> <span class="n">PositiveFloat</span><span class="p">,</span> <span class="n">PositiveInt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._market_models</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MarketImpactCurveGenerator</span><span class="p">,</span>
+    <span class="n">MultiAssetGBMGenerator</span><span class="p">,</span>
+    <span class="n">RegimeSwitchingGenerator</span><span class="p">,</span>
+    <span class="n">generate_market_impact_curve</span><span class="p">,</span>
+    <span class="n">generate_multi_asset_gbm</span><span class="p">,</span>
+    <span class="n">generate_regime_switching</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._portfolio</span><span class="w"> </span><span class="kn">import</span> <span class="n">PositionsGenerator</span><span class="p">,</span> <span class="n">TransactionsGenerator</span><span class="p">,</span> <span class="n">generate_positions</span><span class="p">,</span> <span class="n">generate_transactions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._risk_models</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">FactorCovarianceGenerator</span><span class="p">,</span>
+    <span class="n">FundamentalRiskModelGenerator</span><span class="p">,</span>
+    <span class="n">SpecificVarianceGenerator</span><span class="p">,</span>
+    <span class="n">StatisticalRiskModelGenerator</span><span class="p">,</span>
+    <span class="n">generate_factor_covariance</span><span class="p">,</span>
+    <span class="n">generate_fundamental_risk_model</span><span class="p">,</span>
+    <span class="n">generate_specific_variance</span><span class="p">,</span>
+    <span class="n">generate_statistical_risk_model</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._signals</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">BenchmarkGenerator</span><span class="p">,</span>
+    <span class="n">FactorLoadingsGenerator</span><span class="p">,</span>
+    <span class="n">SignalGenerator</span><span class="p">,</span>
     <span class="n">generate_benchmark</span><span class="p">,</span>
     <span class="n">generate_factor_loadings</span><span class="p">,</span>
     <span class="n">generate_signal</span><span class="p">,</span>
@@ -259,13 +283,38 @@
 <span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;0.1.0&quot;</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;DataGenerator&quot;</span><span class="p">,</span>
     <span class="s2">&quot;GBMGenerator&quot;</span><span class="p">,</span>
     <span class="s2">&quot;HestonGenerator&quot;</span><span class="p">,</span>
     <span class="s2">&quot;GARCHGenerator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;SignalGenerator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;FactorLoadingsGenerator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;BenchmarkGenerator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PositionsGenerator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TransactionsGenerator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MultiAssetGBMGenerator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RegimeSwitchingGenerator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MarketImpactCurveGenerator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;StatisticalRiskModelGenerator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;FundamentalRiskModelGenerator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;FactorCovarianceGenerator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;SpecificVarianceGenerator&quot;</span><span class="p">,</span>
     <span class="s2">&quot;ohlc_from_close&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;generate_gbm&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;generate_heston&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;generate_garch&quot;</span><span class="p">,</span>
     <span class="s2">&quot;generate_signal&quot;</span><span class="p">,</span>
     <span class="s2">&quot;generate_factor_loadings&quot;</span><span class="p">,</span>
     <span class="s2">&quot;generate_benchmark&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;generate_positions&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;generate_transactions&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;generate_multi_asset_gbm&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;generate_regime_switching&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;generate_market_impact_curve&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;generate_statistical_risk_model&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;generate_fundamental_risk_model&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;generate_factor_covariance&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;generate_specific_variance&quot;</span><span class="p">,</span>
 <span class="p">]</span>
 
 
@@ -275,228 +324,215 @@
 
 <div class="viewcode-block" id="GBMGenerator">
 <a class="viewcode-back" href="../docs/src/API.html#finance_datagen.GBMGenerator">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">GBMGenerator</span><span class="p">:</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GBMGenerator</span><span class="p">(</span><span class="n">DataGenerator</span><span class="p">[</span><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]):</span>
 <span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Geometric Brownian Motion price generator.</span>
 
 <span class="sd">    Discretizes the SDE :math:`dS_t = \mu S_t\, dt + \sigma S_t\, dW_t`</span>
 <span class="sd">    exactly in log-space. Returns a polars ``DataFrame`` with columns</span>
 <span class="sd">    ``[timestamp, symbol, price]`` of length ``n_steps + 1``.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        s0: Initial price. Must be strictly positive.</span>
-<span class="sd">        mu: Drift (annualized).</span>
-<span class="sd">        sigma: Volatility (annualized). Must be non-negative.</span>
-<span class="sd">        dt: Model time step in years (e.g. ``1/252`` for daily).</span>
-<span class="sd">        n_steps: Number of return draws. The output has ``n_steps + 1``</span>
-<span class="sd">            rows.</span>
-<span class="sd">        symbol: Value written into the ``symbol`` column.</span>
-<span class="sd">        start_ms: First timestamp, epoch milliseconds (UTC).</span>
-<span class="sd">        step_ms: Spacing of the timestamp grid in milliseconds.</span>
-<span class="sd">        seed: Optional ChaCha8 seed for reproducible output.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If any parameter is out of range.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="GBMGenerator.__init__">
-<a class="viewcode-back" href="../docs/src/API.html#finance_datagen.GBMGenerator.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">s0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
-        <span class="n">mu</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
-        <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span>
-        <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mf">252.0</span><span class="p">,</span>
-        <span class="n">n_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">252</span><span class="p">,</span>
-        <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;SYM&quot;</span><span class="p">,</span>
-        <span class="n">start_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="n">step_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">86_400_000</span><span class="p">,</span>
-        <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_inner</span> <span class="o">=</span> <span class="n">_RustGBM</span><span class="p">(</span>
-            <span class="n">s0</span><span class="o">=</span><span class="n">s0</span><span class="p">,</span>
-            <span class="n">mu</span><span class="o">=</span><span class="n">mu</span><span class="p">,</span>
-            <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">,</span>
-            <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
-            <span class="n">n_steps</span><span class="o">=</span><span class="n">n_steps</span><span class="p">,</span>
-            <span class="n">symbol</span><span class="o">=</span><span class="n">symbol</span><span class="p">,</span>
-            <span class="n">start_ms</span><span class="o">=</span><span class="n">start_ms</span><span class="p">,</span>
-            <span class="n">step_ms</span><span class="o">=</span><span class="n">step_ms</span><span class="p">,</span>
-            <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
-        <span class="p">)</span></div>
-
+    <span class="n">s0</span><span class="p">:</span> <span class="n">PositiveFloat</span> <span class="o">=</span> <span class="mf">100.0</span>
+    <span class="n">mu</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>
+    <span class="n">sigma</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">0.2</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="n">PositiveFloat</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mf">252.0</span>
+    <span class="n">n_steps</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">252</span>
+    <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;SYM&quot;</span>
+    <span class="n">start_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">step_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">86_400_000</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="GBMGenerator.generate">
 <a class="viewcode-back" href="../docs/src/API.html#finance_datagen.GBMGenerator.generate">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Simulate the path and return it as a polars ``DataFrame``.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            DataFrame with columns ``[timestamp, symbol, price]``.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">_rb_to_polars</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_inner</span><span class="o">.</span><span class="n">record_batch</span><span class="p">())</span></div>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Simulate the path and return it as a polars ``DataFrame``.&quot;&quot;&quot;</span>
+        <span class="n">inner</span> <span class="o">=</span> <span class="n">_RustGBM</span><span class="p">(</span>
+            <span class="n">s0</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">s0</span><span class="p">,</span>
+            <span class="n">mu</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span>
+            <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span>
+            <span class="n">dt</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span>
+            <span class="n">n_steps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">,</span>
+            <span class="n">symbol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">symbol</span><span class="p">,</span>
+            <span class="n">start_ms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">start_ms</span><span class="p">,</span>
+            <span class="n">step_ms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">step_ms</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">_rb_to_polars</span><span class="p">(</span><span class="n">inner</span><span class="o">.</span><span class="n">record_batch</span><span class="p">())</span></div>
 </div>
 
 
 
 <div class="viewcode-block" id="HestonGenerator">
 <a class="viewcode-back" href="../docs/src/API.html#finance_datagen.HestonGenerator">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">HestonGenerator</span><span class="p">:</span>
-<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Heston (1993) stochastic-volatility price generator.</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HestonGenerator</span><span class="p">(</span><span class="n">DataGenerator</span><span class="p">[</span><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Heston stochastic-volatility price generator.&quot;&quot;&quot;</span>
 
-<span class="sd">    Two-factor SDE</span>
-
-<span class="sd">    .. math::</span>
-
-<span class="sd">        dS_t &amp;= \mu S_t\,dt + \sqrt{v_t}\,S_t\,dW_t^{S} \\</span>
-<span class="sd">        dv_t &amp;= \kappa(\theta - v_t)\,dt + \xi\sqrt{v_t}\,dW_t^{v}</span>
-
-<span class="sd">    with :math:`\mathrm{Corr}(dW^S, dW^v) = \rho`. Discretized with</span>
-<span class="sd">    full-truncation Euler on the variance, log-Euler on the price.</span>
-<span class="sd">    Returns a polars ``DataFrame`` with columns</span>
-<span class="sd">    ``[timestamp, symbol, price, variance]``.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        s0: Initial price; must be &gt; 0.</span>
-<span class="sd">        v0: Initial variance; must be &gt;= 0.</span>
-<span class="sd">        mu: Drift.</span>
-<span class="sd">        kappa: Mean-reversion speed; must be &gt;= 0.</span>
-<span class="sd">        theta: Long-run variance; must be &gt;= 0.</span>
-<span class="sd">        xi: Vol-of-vol; must be &gt;= 0.</span>
-<span class="sd">        rho: Leverage correlation; must satisfy ``abs(rho) &lt;= 1``.</span>
-<span class="sd">        dt: Model time step in years.</span>
-<span class="sd">        n_steps: Number of draws.</span>
-<span class="sd">        symbol: Value written into the ``symbol`` column.</span>
-<span class="sd">        start_ms: First timestamp (epoch ms, UTC).</span>
-<span class="sd">        step_ms: Timestamp grid spacing in ms.</span>
-<span class="sd">        seed: Optional ChaCha8 seed.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If any parameter is out of range.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-<div class="viewcode-block" id="HestonGenerator.__init__">
-<a class="viewcode-back" href="../docs/src/API.html#finance_datagen.HestonGenerator.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">s0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
-        <span class="n">v0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.04</span><span class="p">,</span>
-        <span class="n">mu</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
-        <span class="n">kappa</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
-        <span class="n">theta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.04</span><span class="p">,</span>
-        <span class="n">xi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span>
-        <span class="n">rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.7</span><span class="p">,</span>
-        <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mf">252.0</span><span class="p">,</span>
-        <span class="n">n_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">252</span><span class="p">,</span>
-        <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;SYM&quot;</span><span class="p">,</span>
-        <span class="n">start_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="n">step_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">86_400_000</span><span class="p">,</span>
-        <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_inner</span> <span class="o">=</span> <span class="n">_RustHeston</span><span class="p">(</span>
-            <span class="n">s0</span><span class="o">=</span><span class="n">s0</span><span class="p">,</span>
-            <span class="n">v0</span><span class="o">=</span><span class="n">v0</span><span class="p">,</span>
-            <span class="n">mu</span><span class="o">=</span><span class="n">mu</span><span class="p">,</span>
-            <span class="n">kappa</span><span class="o">=</span><span class="n">kappa</span><span class="p">,</span>
-            <span class="n">theta</span><span class="o">=</span><span class="n">theta</span><span class="p">,</span>
-            <span class="n">xi</span><span class="o">=</span><span class="n">xi</span><span class="p">,</span>
-            <span class="n">rho</span><span class="o">=</span><span class="n">rho</span><span class="p">,</span>
-            <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
-            <span class="n">n_steps</span><span class="o">=</span><span class="n">n_steps</span><span class="p">,</span>
-            <span class="n">symbol</span><span class="o">=</span><span class="n">symbol</span><span class="p">,</span>
-            <span class="n">start_ms</span><span class="o">=</span><span class="n">start_ms</span><span class="p">,</span>
-            <span class="n">step_ms</span><span class="o">=</span><span class="n">step_ms</span><span class="p">,</span>
-            <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
-        <span class="p">)</span></div>
-
+    <span class="n">s0</span><span class="p">:</span> <span class="n">PositiveFloat</span> <span class="o">=</span> <span class="mf">100.0</span>
+    <span class="n">v0</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">0.04</span>
+    <span class="n">mu</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>
+    <span class="n">kappa</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="n">theta</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">0.04</span>
+    <span class="n">xi</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">0.3</span>
+    <span class="n">rho</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">ge</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.7</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="n">PositiveFloat</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mf">252.0</span>
+    <span class="n">n_steps</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">252</span>
+    <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;SYM&quot;</span>
+    <span class="n">start_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">step_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">86_400_000</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="HestonGenerator.generate">
 <a class="viewcode-back" href="../docs/src/API.html#finance_datagen.HestonGenerator.generate">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Simulate the path and return it as a polars ``DataFrame``.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            DataFrame with columns</span>
-<span class="sd">            ``[timestamp, symbol, price, variance]``. The ``variance``</span>
-<span class="sd">            column is non-negative (clamped at zero).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">_rb_to_polars</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_inner</span><span class="o">.</span><span class="n">record_batch</span><span class="p">())</span></div>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Simulate the path and return it as a polars ``DataFrame``.&quot;&quot;&quot;</span>
+        <span class="n">inner</span> <span class="o">=</span> <span class="n">_RustHeston</span><span class="p">(</span>
+            <span class="n">s0</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">s0</span><span class="p">,</span>
+            <span class="n">v0</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">v0</span><span class="p">,</span>
+            <span class="n">mu</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span>
+            <span class="n">kappa</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">kappa</span><span class="p">,</span>
+            <span class="n">theta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">theta</span><span class="p">,</span>
+            <span class="n">xi</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">xi</span><span class="p">,</span>
+            <span class="n">rho</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">,</span>
+            <span class="n">dt</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">,</span>
+            <span class="n">n_steps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">,</span>
+            <span class="n">symbol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">symbol</span><span class="p">,</span>
+            <span class="n">start_ms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">start_ms</span><span class="p">,</span>
+            <span class="n">step_ms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">step_ms</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">_rb_to_polars</span><span class="p">(</span><span class="n">inner</span><span class="o">.</span><span class="n">record_batch</span><span class="p">())</span></div>
 </div>
 
 
 
 <div class="viewcode-block" id="GARCHGenerator">
 <a class="viewcode-back" href="../docs/src/API.html#finance_datagen.GARCHGenerator">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">GARCHGenerator</span><span class="p">:</span>
-<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;GARCH(1,1) discrete-time return generator.</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GARCHGenerator</span><span class="p">(</span><span class="n">DataGenerator</span><span class="p">[</span><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;GARCH(1,1) discrete-time return generator.&quot;&quot;&quot;</span>
 
-<span class="sd">    .. math::</span>
-
-<span class="sd">        r_t &amp;= \mu + \sigma_t Z_t,\quad Z_t \sim \mathcal{N}(0,1) \\</span>
-<span class="sd">        \sigma_t^2 &amp;= \omega + \alpha\,\varepsilon_{t-1}^2 + \beta\,\sigma_{t-1}^2</span>
-
-<span class="sd">    When the process is stationary (``alpha + beta &lt; 1``) the initial</span>
-<span class="sd">    variance is set to the unconditional value</span>
-<span class="sd">    ``omega / (1 - alpha - beta)``; otherwise it falls back to ``omega``.</span>
-<span class="sd">    Returns a polars ``DataFrame`` with columns</span>
-<span class="sd">    ``[timestamp, symbol, price, return, sigma]``; the first row has</span>
-<span class="sd">    ``return = 0``.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        s0: Initial price; must be &gt; 0.</span>
-<span class="sd">        mu: Mean log-return.</span>
-<span class="sd">        omega: Constant variance term; must be &gt;= 0.</span>
-<span class="sd">        alpha: Shock weight; must be &gt;= 0.</span>
-<span class="sd">        beta: Persistence weight; must be &gt;= 0.</span>
-<span class="sd">        n_steps: Number of return draws.</span>
-<span class="sd">        symbol: Value written into the ``symbol`` column.</span>
-<span class="sd">        start_ms: First timestamp (epoch ms, UTC).</span>
-<span class="sd">        step_ms: Timestamp grid spacing in ms.</span>
-<span class="sd">        seed: Optional ChaCha8 seed.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If any parameter is out of range.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-<div class="viewcode-block" id="GARCHGenerator.__init__">
-<a class="viewcode-back" href="../docs/src/API.html#finance_datagen.GARCHGenerator.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">s0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
-        <span class="n">mu</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
-        <span class="n">omega</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-6</span><span class="p">,</span>
-        <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
-        <span class="n">beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.90</span><span class="p">,</span>
-        <span class="n">n_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">252</span><span class="p">,</span>
-        <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;SYM&quot;</span><span class="p">,</span>
-        <span class="n">start_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="n">step_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">86_400_000</span><span class="p">,</span>
-        <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_inner</span> <span class="o">=</span> <span class="n">_RustGARCH</span><span class="p">(</span>
-            <span class="n">s0</span><span class="o">=</span><span class="n">s0</span><span class="p">,</span>
-            <span class="n">mu</span><span class="o">=</span><span class="n">mu</span><span class="p">,</span>
-            <span class="n">omega</span><span class="o">=</span><span class="n">omega</span><span class="p">,</span>
-            <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
-            <span class="n">beta</span><span class="o">=</span><span class="n">beta</span><span class="p">,</span>
-            <span class="n">n_steps</span><span class="o">=</span><span class="n">n_steps</span><span class="p">,</span>
-            <span class="n">symbol</span><span class="o">=</span><span class="n">symbol</span><span class="p">,</span>
-            <span class="n">start_ms</span><span class="o">=</span><span class="n">start_ms</span><span class="p">,</span>
-            <span class="n">step_ms</span><span class="o">=</span><span class="n">step_ms</span><span class="p">,</span>
-            <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
-        <span class="p">)</span></div>
-
+    <span class="n">s0</span><span class="p">:</span> <span class="n">PositiveFloat</span> <span class="o">=</span> <span class="mf">100.0</span>
+    <span class="n">mu</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">omega</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">1e-6</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">0.05</span>
+    <span class="n">beta</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">0.90</span>
+    <span class="n">n_steps</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">252</span>
+    <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;SYM&quot;</span>
+    <span class="n">start_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">step_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">86_400_000</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="GARCHGenerator.generate">
 <a class="viewcode-back" href="../docs/src/API.html#finance_datagen.GARCHGenerator.generate">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Simulate the path and return it as a polars ``DataFrame``.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            DataFrame with columns</span>
-<span class="sd">            ``[timestamp, symbol, price, return, sigma]``.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">_rb_to_polars</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_inner</span><span class="o">.</span><span class="n">record_batch</span><span class="p">())</span></div>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Simulate the path and return it as a polars ``DataFrame``.&quot;&quot;&quot;</span>
+        <span class="n">inner</span> <span class="o">=</span> <span class="n">_RustGARCH</span><span class="p">(</span>
+            <span class="n">s0</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">s0</span><span class="p">,</span>
+            <span class="n">mu</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span>
+            <span class="n">omega</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">omega</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span>
+            <span class="n">beta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">beta</span><span class="p">,</span>
+            <span class="n">n_steps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">,</span>
+            <span class="n">symbol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">symbol</span><span class="p">,</span>
+            <span class="n">start_ms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">start_ms</span><span class="p">,</span>
+            <span class="n">step_ms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">step_ms</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">_rb_to_polars</span><span class="p">(</span><span class="n">inner</span><span class="o">.</span><span class="n">record_batch</span><span class="p">())</span></div>
 </div>
+
+
+
+<div class="viewcode-block" id="generate_gbm">
+<a class="viewcode-back" href="../docs/src/API.html#finance_datagen.generate_gbm">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_gbm</span><span class="p">(</span>
+    <span class="n">s0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
+    <span class="n">mu</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+    <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mf">252.0</span><span class="p">,</span>
+    <span class="n">n_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">252</span><span class="p">,</span>
+    <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;SYM&quot;</span><span class="p">,</span>
+    <span class="n">start_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">step_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">86_400_000</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a GBM price path.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">GBMGenerator</span><span class="p">(</span>
+        <span class="n">s0</span><span class="o">=</span><span class="n">s0</span><span class="p">,</span>
+        <span class="n">mu</span><span class="o">=</span><span class="n">mu</span><span class="p">,</span>
+        <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">,</span>
+        <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+        <span class="n">n_steps</span><span class="o">=</span><span class="n">n_steps</span><span class="p">,</span>
+        <span class="n">symbol</span><span class="o">=</span><span class="n">symbol</span><span class="p">,</span>
+        <span class="n">start_ms</span><span class="o">=</span><span class="n">start_ms</span><span class="p">,</span>
+        <span class="n">step_ms</span><span class="o">=</span><span class="n">step_ms</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="generate_heston">
+<a class="viewcode-back" href="../docs/src/API.html#finance_datagen.generate_heston">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_heston</span><span class="p">(</span>
+    <span class="n">s0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
+    <span class="n">v0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.04</span><span class="p">,</span>
+    <span class="n">mu</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+    <span class="n">kappa</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
+    <span class="n">theta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.04</span><span class="p">,</span>
+    <span class="n">xi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span>
+    <span class="n">rho</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.7</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="mf">252.0</span><span class="p">,</span>
+    <span class="n">n_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">252</span><span class="p">,</span>
+    <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;SYM&quot;</span><span class="p">,</span>
+    <span class="n">start_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">step_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">86_400_000</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a Heston price path.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">HestonGenerator</span><span class="p">(</span>
+        <span class="n">s0</span><span class="o">=</span><span class="n">s0</span><span class="p">,</span>
+        <span class="n">v0</span><span class="o">=</span><span class="n">v0</span><span class="p">,</span>
+        <span class="n">mu</span><span class="o">=</span><span class="n">mu</span><span class="p">,</span>
+        <span class="n">kappa</span><span class="o">=</span><span class="n">kappa</span><span class="p">,</span>
+        <span class="n">theta</span><span class="o">=</span><span class="n">theta</span><span class="p">,</span>
+        <span class="n">xi</span><span class="o">=</span><span class="n">xi</span><span class="p">,</span>
+        <span class="n">rho</span><span class="o">=</span><span class="n">rho</span><span class="p">,</span>
+        <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+        <span class="n">n_steps</span><span class="o">=</span><span class="n">n_steps</span><span class="p">,</span>
+        <span class="n">symbol</span><span class="o">=</span><span class="n">symbol</span><span class="p">,</span>
+        <span class="n">start_ms</span><span class="o">=</span><span class="n">start_ms</span><span class="p">,</span>
+        <span class="n">step_ms</span><span class="o">=</span><span class="n">step_ms</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="generate_garch">
+<a class="viewcode-back" href="../docs/src/API.html#finance_datagen.generate_garch">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_garch</span><span class="p">(</span>
+    <span class="n">s0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
+    <span class="n">mu</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+    <span class="n">omega</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-6</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+    <span class="n">beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.90</span><span class="p">,</span>
+    <span class="n">n_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">252</span><span class="p">,</span>
+    <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;SYM&quot;</span><span class="p">,</span>
+    <span class="n">start_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">step_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">86_400_000</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a GARCH price and return path.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">GARCHGenerator</span><span class="p">(</span>
+        <span class="n">s0</span><span class="o">=</span><span class="n">s0</span><span class="p">,</span>
+        <span class="n">mu</span><span class="o">=</span><span class="n">mu</span><span class="p">,</span>
+        <span class="n">omega</span><span class="o">=</span><span class="n">omega</span><span class="p">,</span>
+        <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
+        <span class="n">beta</span><span class="o">=</span><span class="n">beta</span><span class="p">,</span>
+        <span class="n">n_steps</span><span class="o">=</span><span class="n">n_steps</span><span class="p">,</span>
+        <span class="n">symbol</span><span class="o">=</span><span class="n">symbol</span><span class="p">,</span>
+        <span class="n">start_ms</span><span class="o">=</span><span class="n">start_ms</span><span class="p">,</span>
+        <span class="n">step_ms</span><span class="o">=</span><span class="n">step_ms</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span></div>
 
 
 
@@ -512,39 +548,7 @@
     <span class="n">step_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">86_400_000</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct an OHLCV bar series from a close-price series.</span>
-
-<span class="sd">    For each bar ``i``::</span>
-
-<span class="sd">        open_i  = close_{i-1}                        (open_0 = close_0)</span>
-<span class="sd">        high_i  = max(open_i, close_i) * (1 + |U_1| * intrabar_vol)</span>
-<span class="sd">        low_i   = min(open_i, close_i) * (1 - |U_2| * intrabar_vol)</span>
-<span class="sd">        ret_i   = log(close_i / close_{i-1})         (ret_0 = 0)</span>
-<span class="sd">        vol_i   = base_volume + vol_factor * |ret_i|</span>
-
-<span class="sd">    where ``U_1, U_2 ~ Uniform(0, 1)`` are independent. The synthesized</span>
-<span class="sd">    bars satisfy ``high &gt;= max(open, close)`` and</span>
-<span class="sd">    ``low &lt;= min(open, close)``.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        close: Close-price series. Accepts a list, iterable, numpy</span>
-<span class="sd">            array, or polars ``Series`` of floats. Must be non-empty.</span>
-<span class="sd">        intrabar_vol: Per-bar high/low envelope width.</span>
-<span class="sd">        base_volume: Floor volume.</span>
-<span class="sd">        vol_factor: Volume sensitivity to absolute log-return.</span>
-<span class="sd">        symbol: Value written into the ``symbol`` column.</span>
-<span class="sd">        start_ms: First timestamp (epoch ms, UTC).</span>
-<span class="sd">        step_ms: Timestamp grid spacing in ms.</span>
-<span class="sd">        seed: Optional ChaCha8 seed.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        polars ``DataFrame`` with columns</span>
-<span class="sd">        ``[timestamp, symbol, open, high, low, close, volume]``.</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If ``close`` is empty or any parameter is out of</span>
-<span class="sd">            range.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct an OHLCV bar series from a close-price series.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">close</span><span class="p">,</span> <span class="n">pl</span><span class="o">.</span><span class="n">Series</span><span class="p">):</span>
         <span class="n">close</span> <span class="o">=</span> <span class="n">close</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
     <span class="k">else</span><span class="p">:</span>

@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>finance_datagen._signals - finance datagen v0.1.0</title>
+        <title>finance_datagen._portfolio - finance datagen v0.1.0</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -230,43 +230,52 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <h1>Source code for finance_datagen._signals</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Signal, factor-loading, and benchmark generators.&quot;&quot;&quot;</span>
+          <h1>Source code for finance_datagen._portfolio</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Synthetic positions and transactions for post-trade workflows.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span><span class="p">,</span> <span class="n">timedelta</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Sequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span><span class="p">,</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">timedelta</span><span class="p">,</span> <span class="n">timezone</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">model_validator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_enums</span><span class="w"> </span><span class="kn">import</span> <span class="n">PositionEffect</span><span class="p">,</span> <span class="n">Side</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">model_validator</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._base</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataGenerator</span><span class="p">,</span> <span class="n">NonNegativeFloat</span><span class="p">,</span> <span class="n">PositiveFloat</span><span class="p">,</span> <span class="n">PositiveInt</span>
 
+<span class="n">_TRANSACTION_INTENTS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="p">(</span><span class="n">Side</span><span class="o">.</span><span class="n">Buy</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">PositionEffect</span><span class="o">.</span><span class="n">Open</span><span class="o">.</span><span class="n">value</span><span class="p">),</span>
+    <span class="p">(</span><span class="n">Side</span><span class="o">.</span><span class="n">Sell</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">PositionEffect</span><span class="o">.</span><span class="n">Close</span><span class="o">.</span><span class="n">value</span><span class="p">),</span>
+    <span class="p">(</span><span class="n">Side</span><span class="o">.</span><span class="n">Sell</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">PositionEffect</span><span class="o">.</span><span class="n">Open</span><span class="o">.</span><span class="n">value</span><span class="p">),</span>
+    <span class="p">(</span><span class="n">Side</span><span class="o">.</span><span class="n">Buy</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">PositionEffect</span><span class="o">.</span><span class="n">Close</span><span class="o">.</span><span class="n">value</span><span class="p">),</span>
+<span class="p">)</span>
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_date_range</span><span class="p">(</span><span class="n">n_dates</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">date</span><span class="p">]:</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_date_range</span><span class="p">(</span><span class="n">n_dates</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">date</span><span class="p">]:</span>
     <span class="n">first</span> <span class="o">=</span> <span class="n">date</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">start</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">start</span>
     <span class="k">return</span> <span class="p">[</span><span class="n">first</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_dates</span><span class="p">)]</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_symbols</span><span class="p">(</span><span class="n">n_assets</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">symbols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_symbols</span><span class="p">(</span><span class="n">n_assets</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">symbols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
     <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;A</span><span class="si">{</span><span class="n">i</span><span class="si">:</span><span class="s2">04d</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_assets</span><span class="p">)]</span> <span class="k">if</span> <span class="n">symbols</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">list</span><span class="p">(</span><span class="n">symbols</span><span class="p">)</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_assets</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;symbols length </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span><span class="si">}</span><span class="s2"> != n_assets </span><span class="si">{</span><span class="n">n_assets</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">values</span>
 
 
-<div class="viewcode-block" id="SignalGenerator">
-<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.SignalGenerator">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">SignalGenerator</span><span class="p">(</span><span class="n">DataGenerator</span><span class="p">[</span><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a long-form signal and forward-return panel.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="PositionsGenerator">
+<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.PositionsGenerator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PositionsGenerator</span><span class="p">(</span><span class="n">DataGenerator</span><span class="p">[</span><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a long-form synthetic positions table.&quot;&quot;&quot;</span>
 
     <span class="n">n_dates</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">252</span>
-    <span class="n">n_assets</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">gt</span><span class="o">=</span><span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">50</span>
-    <span class="n">ic</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">gt</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">lt</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.05</span>
-    <span class="n">return_vol</span><span class="p">:</span> <span class="n">PositiveFloat</span> <span class="o">=</span> <span class="mf">0.02</span>
+    <span class="n">n_assets</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">50</span>
+    <span class="n">portfolio_value</span><span class="p">:</span> <span class="n">PositiveFloat</span> <span class="o">=</span> <span class="mf">1_000_000.0</span>
+    <span class="n">gross_exposure</span><span class="p">:</span> <span class="n">PositiveFloat</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">average_price</span><span class="p">:</span> <span class="n">PositiveFloat</span> <span class="o">=</span> <span class="mf">100.0</span>
+    <span class="n">price_vol</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">0.02</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">symbols</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
@@ -276,107 +285,124 @@
         <span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
-<div class="viewcode-block" id="SignalGenerator.generate">
-<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.SignalGenerator.generate">[docs]</a>
+<div class="viewcode-block" id="PositionsGenerator.generate">
+<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.PositionsGenerator.generate">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``[date, symbol, signal, fwd_returns]``.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``[date, symbol, price, quantity, market_value, weight]``.&quot;&quot;&quot;</span>
         <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
-        <span class="n">fwd</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">return_vol</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">))</span>
-        <span class="n">fwd_z</span> <span class="o">=</span> <span class="p">(</span><span class="n">fwd</span> <span class="o">-</span> <span class="n">fwd</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span> <span class="o">/</span> <span class="n">fwd</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-        <span class="n">noise</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">))</span>
-        <span class="n">signal</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ic</span> <span class="o">*</span> <span class="n">fwd_z</span> <span class="o">+</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">ic</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ic</span><span class="p">)</span> <span class="o">*</span> <span class="n">noise</span>
-
         <span class="n">dates</span> <span class="o">=</span> <span class="n">_date_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
-        <span class="n">syms</span> <span class="o">=</span> <span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span>
+        <span class="n">symbols</span> <span class="o">=</span> <span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span>
+
+        <span class="n">base_prices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">average_price</span> <span class="o">*</span> <span class="n">rng</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">)</span>
+        <span class="n">returns</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.0002</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_vol</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">))</span>
+        <span class="n">prices</span> <span class="o">=</span> <span class="n">base_prices</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">returns</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+
+        <span class="n">raw_weights</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">))</span>
+        <span class="n">raw_weights</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">raw_weights</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">raw_weights</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">gross_exposure</span>
+        <span class="n">market_values</span> <span class="o">=</span> <span class="n">weights</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span>
+        <span class="n">quantities</span> <span class="o">=</span> <span class="n">market_values</span> <span class="o">/</span> <span class="n">prices</span>
+
         <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
             <span class="p">{</span>
                 <span class="s2">&quot;date&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dates</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;datetime64[D]&quot;</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">),</span>
-                <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">syms</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">),</span>
-                <span class="s2">&quot;signal&quot;</span><span class="p">:</span> <span class="n">signal</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span>
-                <span class="s2">&quot;fwd_returns&quot;</span><span class="p">:</span> <span class="n">fwd</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span>
+                <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">symbols</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">),</span>
+                <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="n">prices</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+                <span class="s2">&quot;quantity&quot;</span><span class="p">:</span> <span class="n">quantities</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+                <span class="s2">&quot;market_value&quot;</span><span class="p">:</span> <span class="n">market_values</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+                <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="n">weights</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
             <span class="p">}</span>
         <span class="p">)</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;date&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">Date</span><span class="p">))</span></div>
 </div>
 
 
 
-<div class="viewcode-block" id="FactorLoadingsGenerator">
-<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.FactorLoadingsGenerator">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">FactorLoadingsGenerator</span><span class="p">(</span><span class="n">DataGenerator</span><span class="p">[</span><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate Barra-style factor loadings.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="TransactionsGenerator">
+<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.TransactionsGenerator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TransactionsGenerator</span><span class="p">(</span><span class="n">DataGenerator</span><span class="p">[</span><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a synthetic transaction log for post-trade tests.&quot;&quot;&quot;</span>
 
-    <span class="n">n_assets</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">gt</span><span class="o">=</span><span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">50</span>
-    <span class="n">factors</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;market&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="s2">&quot;momentum&quot;</span><span class="p">,</span> <span class="s2">&quot;size&quot;</span><span class="p">,</span> <span class="s2">&quot;quality&quot;</span><span class="p">)</span>
+    <span class="n">n_dates</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">252</span>
+    <span class="n">n_assets</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">50</span>
+    <span class="n">trades_per_day</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">25</span>
+    <span class="n">average_price</span><span class="p">:</span> <span class="n">PositiveFloat</span> <span class="o">=</span> <span class="mf">100.0</span>
+    <span class="n">price_vol</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">0.25</span>
+    <span class="n">max_amount</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">1_000</span>
+    <span class="n">commission</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">fee_bps</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">0.2</span>
+    <span class="n">bps</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">5.0</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">symbols</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">factors</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;factors must not be empty&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_symbols</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
-<div class="viewcode-block" id="FactorLoadingsGenerator.generate">
-<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.FactorLoadingsGenerator.generate">[docs]</a>
+<div class="viewcode-block" id="TransactionsGenerator.generate">
+<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.TransactionsGenerator.generate">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``symbol`` plus one column per factor.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return transaction rows with side labels and explicit costs.&quot;&quot;&quot;</span>
         <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
-        <span class="n">cols</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)}</span>
-        <span class="k">for</span> <span class="n">factor</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">factors</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">factor</span> <span class="o">==</span> <span class="s2">&quot;market&quot;</span><span class="p">:</span>
-                <span class="n">cols</span><span class="p">[</span><span class="n">factor</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">values</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">)</span>
-                <span class="n">cols</span><span class="p">[</span><span class="n">factor</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">values</span> <span class="o">-</span> <span class="n">values</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">values</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">cols</span><span class="p">)</span></div>
-</div>
-
-
-
-<div class="viewcode-block" id="BenchmarkGenerator">
-<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.BenchmarkGenerator">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">BenchmarkGenerator</span><span class="p">(</span><span class="n">DataGenerator</span><span class="p">[</span><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate an independent Gaussian benchmark return series.&quot;&quot;&quot;</span>
-
-    <span class="n">n_dates</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">252</span>
-    <span class="n">annual_return</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.08</span>
-    <span class="n">annual_vol</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">0.16</span>
-    <span class="n">periods_per_year</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">252</span>
-    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-
-<div class="viewcode-block" id="BenchmarkGenerator.generate">
-<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.BenchmarkGenerator.generate">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``[date, benchmark]``.&quot;&quot;&quot;</span>
-        <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
-        <span class="n">mu</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">annual_return</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">periods_per_year</span>
-        <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">annual_vol</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">periods_per_year</span><span class="p">)</span>
-        <span class="n">rets</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">)</span>
         <span class="n">dates</span> <span class="o">=</span> <span class="n">_date_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;date&quot;</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">dates</span><span class="p">)</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">Date</span><span class="p">),</span> <span class="s2">&quot;benchmark&quot;</span><span class="p">:</span> <span class="n">rets</span><span class="p">})</span></div>
+        <span class="n">n_rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">trades_per_day</span>
+        <span class="n">transaction_intents</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">_TRANSACTION_INTENTS</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">)</span>
+        <span class="n">symbols</span> <span class="o">=</span> <span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span>
+
+        <span class="n">timestamps</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">current_date</span> <span class="ow">in</span> <span class="n">dates</span><span class="p">:</span>
+            <span class="n">base</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">combine</span><span class="p">(</span><span class="n">current_date</span><span class="p">,</span> <span class="n">time</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">30</span><span class="p">),</span> <span class="n">tzinfo</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+            <span class="n">offsets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">+</span> <span class="mi">30</span> <span class="o">*</span> <span class="mi">60</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">trades_per_day</span><span class="p">))</span>
+            <span class="n">timestamps</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">base</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">offset</span><span class="p">))</span> <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">offsets</span><span class="p">)</span>
+
+        <span class="n">intent_indices</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">_TRANSACTION_INTENTS</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">)</span>
+        <span class="n">side_values</span> <span class="o">=</span> <span class="n">transaction_intents</span><span class="p">[</span><span class="n">intent_indices</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">position_effect_values</span> <span class="o">=</span> <span class="n">transaction_intents</span><span class="p">[</span><span class="n">intent_indices</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">raw_amounts</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_amount</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">signed_amounts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">side_values</span> <span class="o">==</span> <span class="n">Side</span><span class="o">.</span><span class="n">Buy</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">raw_amounts</span><span class="p">,</span> <span class="o">-</span><span class="n">raw_amounts</span><span class="p">)</span>
+        <span class="n">prices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">average_price</span> <span class="o">*</span> <span class="n">rng</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">price_vol</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">)</span>
+        <span class="n">notional</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">signed_amounts</span><span class="p">)</span> <span class="o">*</span> <span class="n">prices</span>
+
+        <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">timestamps</span><span class="p">)</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">Datetime</span><span class="p">(</span><span class="s2">&quot;ms&quot;</span><span class="p">,</span> <span class="s2">&quot;UTC&quot;</span><span class="p">)),</span>
+                <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">symbols</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">),</span>
+                <span class="s2">&quot;amount&quot;</span><span class="p">:</span> <span class="n">signed_amounts</span><span class="p">,</span>
+                <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="n">prices</span><span class="p">,</span>
+                <span class="s2">&quot;side&quot;</span><span class="p">:</span> <span class="n">side_values</span><span class="p">,</span>
+                <span class="s2">&quot;position_effect&quot;</span><span class="p">:</span> <span class="n">position_effect_values</span><span class="p">,</span>
+                <span class="s2">&quot;notional&quot;</span><span class="p">:</span> <span class="n">notional</span><span class="p">,</span>
+                <span class="s2">&quot;commission&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_rows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">commission</span><span class="p">),</span>
+                <span class="s2">&quot;fees&quot;</span><span class="p">:</span> <span class="n">notional</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">fee_bps</span> <span class="o">/</span> <span class="mf">10_000.0</span><span class="p">,</span>
+                <span class="s2">&quot;bps&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_rows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bps</span><span class="p">),</span>
+            <span class="p">}</span>
+        <span class="p">)</span></div>
 </div>
 
 
 
-<div class="viewcode-block" id="generate_signal">
-<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.generate_signal">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">generate_signal</span><span class="p">(</span>
+<div class="viewcode-block" id="generate_positions">
+<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.generate_positions">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_positions</span><span class="p">(</span>
     <span class="n">n_dates</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">252</span><span class="p">,</span>
     <span class="n">n_assets</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
-    <span class="n">ic</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
-    <span class="n">return_vol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
+    <span class="n">portfolio_value</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1_000_000.0</span><span class="p">,</span>
+    <span class="n">gross_exposure</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">average_price</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
+    <span class="n">price_vol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">symbols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a long-form panel ``[date, symbol, signal, fwd_returns]``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">SignalGenerator</span><span class="p">(</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a synthetic positions table.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">PositionsGenerator</span><span class="p">(</span>
         <span class="n">n_dates</span><span class="o">=</span><span class="n">n_dates</span><span class="p">,</span>
         <span class="n">n_assets</span><span class="o">=</span><span class="n">n_assets</span><span class="p">,</span>
-        <span class="n">ic</span><span class="o">=</span><span class="n">ic</span><span class="p">,</span>
-        <span class="n">return_vol</span><span class="o">=</span><span class="n">return_vol</span><span class="p">,</span>
+        <span class="n">portfolio_value</span><span class="o">=</span><span class="n">portfolio_value</span><span class="p">,</span>
+        <span class="n">gross_exposure</span><span class="o">=</span><span class="n">gross_exposure</span><span class="p">,</span>
+        <span class="n">average_price</span><span class="o">=</span><span class="n">average_price</span><span class="p">,</span>
+        <span class="n">price_vol</span><span class="o">=</span><span class="n">price_vol</span><span class="p">,</span>
         <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
         <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span>
         <span class="n">symbols</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">symbols</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">symbols</span><span class="p">),</span>
@@ -384,42 +410,36 @@
 
 
 
-<div class="viewcode-block" id="generate_factor_loadings">
-<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.generate_factor_loadings">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">generate_factor_loadings</span><span class="p">(</span>
-    <span class="n">n_assets</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
-    <span class="n">factors</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;market&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="s2">&quot;momentum&quot;</span><span class="p">,</span> <span class="s2">&quot;size&quot;</span><span class="p">,</span> <span class="s2">&quot;quality&quot;</span><span class="p">),</span>
-    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">symbols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate Barra-style factor loadings.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">FactorLoadingsGenerator</span><span class="p">(</span>
-        <span class="n">n_assets</span><span class="o">=</span><span class="n">n_assets</span><span class="p">,</span>
-        <span class="n">factors</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">factors</span><span class="p">),</span>
-        <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
-        <span class="n">symbols</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">symbols</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">symbols</span><span class="p">),</span>
-    <span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span></div>
-
-
-
-<div class="viewcode-block" id="generate_benchmark">
-<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.generate_benchmark">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">generate_benchmark</span><span class="p">(</span>
+<div class="viewcode-block" id="generate_transactions">
+<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.generate_transactions">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_transactions</span><span class="p">(</span>
     <span class="n">n_dates</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">252</span><span class="p">,</span>
-    <span class="n">annual_return</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.08</span><span class="p">,</span>
-    <span class="n">annual_vol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.16</span><span class="p">,</span>
-    <span class="n">periods_per_year</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">252</span><span class="p">,</span>
+    <span class="n">n_assets</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="n">trades_per_day</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">25</span><span class="p">,</span>
+    <span class="n">average_price</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
+    <span class="n">price_vol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span>
+    <span class="n">max_amount</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1_000</span><span class="p">,</span>
+    <span class="n">commission</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">fee_bps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span>
+    <span class="n">bps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">symbols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a benchmark return series.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">BenchmarkGenerator</span><span class="p">(</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a synthetic transaction log.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">TransactionsGenerator</span><span class="p">(</span>
         <span class="n">n_dates</span><span class="o">=</span><span class="n">n_dates</span><span class="p">,</span>
-        <span class="n">annual_return</span><span class="o">=</span><span class="n">annual_return</span><span class="p">,</span>
-        <span class="n">annual_vol</span><span class="o">=</span><span class="n">annual_vol</span><span class="p">,</span>
-        <span class="n">periods_per_year</span><span class="o">=</span><span class="n">periods_per_year</span><span class="p">,</span>
+        <span class="n">n_assets</span><span class="o">=</span><span class="n">n_assets</span><span class="p">,</span>
+        <span class="n">trades_per_day</span><span class="o">=</span><span class="n">trades_per_day</span><span class="p">,</span>
+        <span class="n">average_price</span><span class="o">=</span><span class="n">average_price</span><span class="p">,</span>
+        <span class="n">price_vol</span><span class="o">=</span><span class="n">price_vol</span><span class="p">,</span>
+        <span class="n">max_amount</span><span class="o">=</span><span class="n">max_amount</span><span class="p">,</span>
+        <span class="n">commission</span><span class="o">=</span><span class="n">commission</span><span class="p">,</span>
+        <span class="n">fee_bps</span><span class="o">=</span><span class="n">fee_bps</span><span class="p">,</span>
+        <span class="n">bps</span><span class="o">=</span><span class="n">bps</span><span class="p">,</span>
         <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
         <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span>
+        <span class="n">symbols</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">symbols</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">symbols</span><span class="p">),</span>
     <span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span></div>
 
 </pre></div>

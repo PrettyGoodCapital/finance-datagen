@@ -32,6 +32,13 @@ in Rust and emits Apache Arrow `RecordBatch` values; the Python layer
 wraps each generator so the public API returns `polars.DataFrame`
 objects.
 
+All public generator classes inherit from `DataGenerator`, a pydantic
+base model that validates typed parameters on construction. Use
+`.generate()` for the table output, or `next(generator)` for one-shot
+iterator-style use. Convenience functions such as `generate_gbm(...)`
+and `generate_signal(...)` instantiate the matching model and return
+`.generate()`.
+
 ### Generators
 
 #### Price models (Rust core)
@@ -43,25 +50,42 @@ objects.
 | `GARCHGenerator`  | GARCH(1,1) returns                                          | `timestamp, symbol, price, return, sigma`           |
 | `ohlc_from_close` | OHLCV synthesis from any close series                       | `timestamp, symbol, open, high, low, close, volume` |
 
-#### Cross-sectional panels (Python)
+Price-path convenience wrappers are also exported as `generate_gbm`,
+`generate_heston`, and `generate_garch`.
 
-| Symbol                     | Output                                                                       |
-| -------------------------- | ---------------------------------------------------------------------------- |
-| `generate_signal`          | Long-form `[date, symbol, signal, fwd_returns]` with target Pearson IC       |
-| `generate_factor_loadings` | Wide `[symbol, market, value, momentum, size, quality]` Barra-style loadings |
-| `generate_benchmark`       | `[date, benchmark]` Gaussian benchmark return series                         |
+#### Python generators
+
+| Symbol                          | Output                                                                              |
+| ------------------------------- | ----------------------------------------------------------------------------------- |
+| `SignalGenerator`               | Long-form `[date, symbol, signal, fwd_returns]` with target Pearson IC              |
+| `FactorLoadingsGenerator`       | Wide `[symbol, market, value, momentum, size, quality]` Barra-style loadings        |
+| `BenchmarkGenerator`            | `[date, benchmark]` Gaussian benchmark return series                                |
+| `PositionsGenerator`            | Long-form position panel `[date, symbol, price, quantity, market_value, weight]`    |
+| `TransactionsGenerator`         | Transaction log with enum-backed side/position-effect labels and explicit costs     |
+| `MultiAssetGBMGenerator`        | Correlated multi-asset GBM panel `[timestamp, symbol, price, return]`               |
+| `RegimeSwitchingGenerator`      | Markov regime-switching price path `[timestamp, symbol, price, return, regime]`     |
+| `MarketImpactCurveGenerator`    | Participation-rate impact curves with temporary, permanent, and total impact in bps |
+| `StatisticalRiskModelGenerator` | PCA-style factor loadings, factor returns, and specific variance                    |
+| `FundamentalRiskModelGenerator` | Barra-style enum-backed sector/style loadings plus specific variance                |
+| `FactorCovarianceGenerator`     | Symmetric positive semidefinite factor covariance matrix                            |
+| `SpecificVarianceGenerator`     | Positive idiosyncratic variance vector                                              |
+
+Every Python generator has a matching `generate_*` convenience wrapper,
+including the legacy `generate_signal`, `generate_factor_loadings`, and
+`generate_benchmark` functions.
 
 All Rust generators accept an optional `seed: int` for bit-reproducible
-output across platforms (ChaCha8 RNG); the cross-sectional generators
-accept a `seed` for `numpy.random.default_rng`.
+output across platforms (ChaCha8 RNG); the Python generators accept a
+`seed` for `numpy.random.default_rng`.
 
 ### Quick start
 
 ```python
-from finance_datagen import GBMGenerator, ohlc_from_close
+from finance_datagen import GBMGenerator, generate_signal, ohlc_from_close
 
 closes = GBMGenerator(s0=100.0, mu=0.07, sigma=0.25, seed=0).generate()
 bars   = ohlc_from_close(closes["price"], seed=0)
+signal = generate_signal(n_dates=20, n_assets=50, seed=0)
 ```
 
 See the [Data](docs/src/DATA.md) page for model math, parameter ranges,

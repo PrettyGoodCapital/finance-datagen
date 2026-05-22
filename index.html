@@ -254,6 +254,12 @@ without relying on real market data. The numerical core is implemented
 in Rust and emits Apache Arrow <code class="docutils literal notranslate"><span class="pre">RecordBatch</span></code> values; the Python layer
 wraps each generator so the public API returns <code class="docutils literal notranslate"><span class="pre">polars.DataFrame</span></code>
 objects.</p>
+<p>All public generator classes inherit from <code class="docutils literal notranslate"><span class="pre">DataGenerator</span></code>, a pydantic
+base model that validates typed parameters on construction. Use
+<code class="docutils literal notranslate"><span class="pre">.generate()</span></code> for the table output, or <code class="docutils literal notranslate"><span class="pre">next(generator)</span></code> for one-shot
+iterator-style use. Convenience functions such as <code class="docutils literal notranslate"><span class="pre">generate_gbm(...)</span></code>
+and <code class="docutils literal notranslate"><span class="pre">generate_signal(...)</span></code> instantiate the matching model and return
+<code class="docutils literal notranslate"><span class="pre">.generate()</span></code>.</p>
 <section id="generators">
 <h3>Generators<a class="headerlink" href="#generators" title="Link to this heading">¶</a></h3>
 <section id="price-models-rust-core">
@@ -286,9 +292,11 @@ objects.</p>
 </tbody>
 </table>
 </div>
+<p>Price-path convenience wrappers are also exported as <code class="docutils literal notranslate"><span class="pre">generate_gbm</span></code>,
+<code class="docutils literal notranslate"><span class="pre">generate_heston</span></code>, and <code class="docutils literal notranslate"><span class="pre">generate_garch</span></code>.</p>
 </section>
-<section id="cross-sectional-panels-python">
-<h4>Cross-sectional panels (Python)<a class="headerlink" href="#cross-sectional-panels-python" title="Link to this heading">¶</a></h4>
+<section id="python-generators">
+<h4>Python generators<a class="headerlink" href="#python-generators" title="Link to this heading">¶</a></h4>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -297,29 +305,60 @@ objects.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">generate_signal</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SignalGenerator</span></code></p></td>
 <td><p>Long-form <code class="docutils literal notranslate"><span class="pre">[date,</span> <span class="pre">symbol,</span> <span class="pre">signal,</span> <span class="pre">fwd_returns]</span></code> with target Pearson IC</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">generate_factor_loadings</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">FactorLoadingsGenerator</span></code></p></td>
 <td><p>Wide <code class="docutils literal notranslate"><span class="pre">[symbol,</span> <span class="pre">market,</span> <span class="pre">value,</span> <span class="pre">momentum,</span> <span class="pre">size,</span> <span class="pre">quality]</span></code> Barra-style loadings</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">generate_benchmark</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BenchmarkGenerator</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">[date,</span> <span class="pre">benchmark]</span></code> Gaussian benchmark return series</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PositionsGenerator</span></code></p></td>
+<td><p>Long-form position panel <code class="docutils literal notranslate"><span class="pre">[date,</span> <span class="pre">symbol,</span> <span class="pre">price,</span> <span class="pre">quantity,</span> <span class="pre">market_value,</span> <span class="pre">weight]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">TransactionsGenerator</span></code></p></td>
+<td><p>Transaction log with enum-backed side/position-effect labels and explicit costs</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MultiAssetGBMGenerator</span></code></p></td>
+<td><p>Correlated multi-asset GBM panel <code class="docutils literal notranslate"><span class="pre">[timestamp,</span> <span class="pre">symbol,</span> <span class="pre">price,</span> <span class="pre">return]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RegimeSwitchingGenerator</span></code></p></td>
+<td><p>Markov regime-switching price path <code class="docutils literal notranslate"><span class="pre">[timestamp,</span> <span class="pre">symbol,</span> <span class="pre">price,</span> <span class="pre">return,</span> <span class="pre">regime]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MarketImpactCurveGenerator</span></code></p></td>
+<td><p>Participation-rate impact curves with temporary, permanent, and total impact in bps</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">StatisticalRiskModelGenerator</span></code></p></td>
+<td><p>PCA-style factor loadings, factor returns, and specific variance</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">FundamentalRiskModelGenerator</span></code></p></td>
+<td><p>Barra-style enum-backed sector/style loadings plus specific variance</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">FactorCovarianceGenerator</span></code></p></td>
+<td><p>Symmetric positive semidefinite factor covariance matrix</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SpecificVarianceGenerator</span></code></p></td>
+<td><p>Positive idiosyncratic variance vector</p></td>
 </tr>
 </tbody>
 </table>
 </div>
+<p>Every Python generator has a matching <code class="docutils literal notranslate"><span class="pre">generate_*</span></code> convenience wrapper,
+including the legacy <code class="docutils literal notranslate"><span class="pre">generate_signal</span></code>, <code class="docutils literal notranslate"><span class="pre">generate_factor_loadings</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">generate_benchmark</span></code> functions.</p>
 <p>All Rust generators accept an optional <code class="docutils literal notranslate"><span class="pre">seed:</span> <span class="pre">int</span></code> for bit-reproducible
-output across platforms (ChaCha8 RNG); the cross-sectional generators
-accept a <code class="docutils literal notranslate"><span class="pre">seed</span></code> for <code class="docutils literal notranslate"><span class="pre">numpy.random.default_rng</span></code>.</p>
+output across platforms (ChaCha8 RNG); the Python generators accept a
+<code class="docutils literal notranslate"><span class="pre">seed</span></code> for <code class="docutils literal notranslate"><span class="pre">numpy.random.default_rng</span></code>.</p>
 </section>
 </section>
 <section id="quick-start">
 <h3>Quick start<a class="headerlink" href="#quick-start" title="Link to this heading">¶</a></h3>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_datagen</span><span class="w"> </span><span class="kn">import</span> <span class="n">GBMGenerator</span><span class="p">,</span> <span class="n">ohlc_from_close</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_datagen</span><span class="w"> </span><span class="kn">import</span> <span class="n">GBMGenerator</span><span class="p">,</span> <span class="n">generate_signal</span><span class="p">,</span> <span class="n">ohlc_from_close</span>
 
 <span class="n">closes</span> <span class="o">=</span> <span class="n">GBMGenerator</span><span class="p">(</span><span class="n">s0</span><span class="o">=</span><span class="mf">100.0</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="mf">0.07</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span>
 <span class="n">bars</span>   <span class="o">=</span> <span class="n">ohlc_from_close</span><span class="p">(</span><span class="n">closes</span><span class="p">[</span><span class="s2">&quot;price&quot;</span><span class="p">],</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">signal</span> <span class="o">=</span> <span class="n">generate_signal</span><span class="p">(</span><span class="n">n_dates</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">n_assets</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>See the <a class="reference internal" href="docs/src/DATA.html"><span class="std std-doc">Data</span></a> page for model math, parameter ranges,
