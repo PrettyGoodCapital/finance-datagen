@@ -47,7 +47,7 @@ from .finance_datagen import (
     ohlc_from_close as _rust_ohlc_from_close,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "DataGenerator",

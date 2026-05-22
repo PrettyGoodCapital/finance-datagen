@@ -1,6 +1,6 @@
 [package]
 name = "finance_datagen"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["PrettyGoodCapital <prettygoodcapital@gmail.com>"]
 edition = "2021"
 license = "Apache-2.0"
