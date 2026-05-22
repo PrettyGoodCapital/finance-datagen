@@ -1,12 +1,17 @@
 # Data
 
 `finance-datagen` produces **synthetic** financial time series. Every
-generator emits an [Apache Arrow](https://arrow.apache.org/)
+Rust generator emits an [Apache Arrow](https://arrow.apache.org/)
 `RecordBatch` from a polars-free Rust core, which the Python layer
 wraps into a `polars.DataFrame` via the pyarrow PyCapsule interface.
+Python-only generators return polars `DataFrame` objects directly.
+All public generator classes inherit from `DataGenerator`, a pydantic
+base model that validates typed parameters at construction time. Each
+generator can be run with `.generate()` or with one-shot iterator syntax
+via `next(generator)`.
 
-This page documents the data — the stochastic models, their parameters,
-and the schema of every output table.
+This page documents the data: stochastic models, generator parameters,
+and output schemas.
 
 ---
 
@@ -15,19 +20,21 @@ and the schema of every output table.
 All tabular outputs share the following conventions:
 
 | Aspect | Convention |
-|---|---|
-| Timestamp column | `timestamp` of type `Timestamp(Millisecond, UTC)` |
-| Symbol column | `symbol` of type `Utf8` (constant per generator instance) |
+| --- | --- |
+| Timestamp column | `timestamp` of type `Timestamp(Millisecond, UTC)` unless noted otherwise |
+| Symbol column | `symbol` of type `Utf8` |
 | Numeric columns | `Float64` |
-| Path length | A generator with `n_steps` returns `n_steps + 1` rows (initial state + drawn) |
+| Path length | A path generator with `n_steps` returns `n_steps + 1` rows |
 | Time grid | Uniform: `start_ms + i * step_ms` for `i = 0..=n_steps` |
-| Reproducibility | Fixed `seed: int` → identical paths (ChaCha8 RNG) |
+| Reproducibility | Fixed `seed: int` gives deterministic outputs for that generator family |
 
-The `dt` parameter (in years) controls the *modeling* time step used in
-the SDE discretization; `step_ms` controls only the timestamp column.
-They are independent — you can run a daily-frequency model
-(`dt = 1/252`) on a wall-clock grid of seconds (`step_ms = 1000`) for
-testing.
+Most generators also have a matching `generate_*` convenience function
+that instantiates the model for validation and returns `.generate()`.
+
+The `dt` parameter controls the modeling time step used in SDE
+discretization; `step_ms` controls only the timestamp column. They are
+independent: a daily model (`dt = 1/252`) can be emitted on a second or
+minute timestamp grid for testing.
 
 ---
 
@@ -35,47 +42,47 @@ testing.
 
 ### Geometric Brownian Motion (GBM)
 
-The classic Black–Scholes log-normal price process.
+The classic Black-Scholes log-normal price process.
 
 $$
 dS_t = \mu S_t \, dt + \sigma S_t \, dW_t
 $$
 
-Discretized exactly in log-space (no bias for any `dt`):
+Discretized exactly in log-space:
 
 $$
 S_{t+1} = S_t \exp\!\Big( (\mu - \tfrac{1}{2}\sigma^2)\,dt + \sigma\sqrt{dt}\,Z \Big),
 \quad Z \sim \mathcal{N}(0, 1)
 $$
 
-**Parameters** (`GBMGenerator`)
+#### GBM Parameters
 
 | Param | Default | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `s0` | `100.0` | initial price, must be > 0 |
-| `mu` | `0.05` | drift (annualized) |
-| `sigma` | `0.2` | volatility (annualized), must be ≥ 0 |
-| `dt` | `1/252` | model time step (years) |
+| `mu` | `0.05` | drift, annualized |
+| `sigma` | `0.2` | volatility, annualized and nonnegative |
+| `dt` | `1/252` | model time step in years |
 | `n_steps` | `252` | number of return draws |
 | `symbol` | `"SYM"` | label written into the `symbol` column |
-| `start_ms` | `0` | first timestamp (epoch ms, UTC) |
-| `step_ms` | `86_400_000` | timestamp grid spacing (1 day) |
-| `seed` | `None` | RNG seed for reproducibility |
+| `start_ms` | `0` | first timestamp, epoch ms UTC |
+| `step_ms` | `86_400_000` | timestamp spacing, one day by default |
+| `seed` | `None` | RNG seed |
 
-**Schema**
+#### GBM Schema
 
 | Column | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `timestamp` | `Timestamp(ms, UTC)` | uniform grid |
 | `symbol` | `Utf8` | constant |
 | `price` | `Float64` | strictly positive |
 
 ---
 
-### Heston (1993) stochastic volatility
+### Heston Stochastic Volatility
 
-Two-factor SDE with mean-reverting variance and a correlated price
-process:
+Two-factor SDE with mean-reverting variance and correlated price and
+variance shocks:
 
 $$
 \begin{aligned}
@@ -85,9 +92,8 @@ dv_t &= \kappa(\theta - v_t)\,dt + \xi\sqrt{v_t}\,dW_t^{v} \\
 \end{aligned}
 $$
 
-Discretized with **full-truncation Euler** on the variance — the
-standard remedy for the well-known negativity bug of plain Euler when
-the Feller condition $2\kappa\theta \ge \xi^2$ is violated:
+The implementation uses full-truncation Euler on variance, then
+log-Euler on price:
 
 $$
 \begin{aligned}
@@ -96,81 +102,76 @@ S_{t+1} &= S_t \exp\!\Big( (\mu - \tfrac{1}{2}v_t^+)\,dt + \sqrt{v_t^+\,dt}\,Z_S
 \end{aligned}
 $$
 
-where $v_t^+ = \max(v_t, 0)$ and the correlated normals
-$(Z_S, Z_v)$ are produced via a 2×2 Cholesky factor of the correlation
-matrix with off-diagonal $\rho$.
+where $v_t^+ = \max(v_t, 0)$.
 
-**Parameters** (`HestonGenerator`)
+#### Heston Parameters
 
 | Param | Default | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `s0` | `100.0` | initial price > 0 |
-| `v0` | `0.04` | initial variance ≥ 0 |
-| `mu` | `0.05` | risk-neutral / physical drift |
-| `kappa` | `2.0` | mean-reversion speed (κ ≥ 0) |
-| `theta` | `0.04` | long-run variance (θ ≥ 0) |
-| `xi` | `0.3` | vol-of-vol (ξ ≥ 0) |
-| `rho` | `-0.7` | leverage correlation, must satisfy `|rho| ≤ 1` |
-| `dt` | `1/252` | time step (years) |
+| `v0` | `0.04` | initial variance >= 0 |
+| `mu` | `0.05` | risk-neutral or physical drift |
+| `kappa` | `2.0` | mean-reversion speed, nonnegative |
+| `theta` | `0.04` | long-run variance, nonnegative |
+| `xi` | `0.3` | vol-of-vol, nonnegative |
+| `rho` | `-0.7` | leverage correlation, must satisfy `abs(rho) <= 1` |
+| `dt` | `1/252` | model time step in years |
 | `n_steps` | `252` | number of draws |
 
-**Schema**
+#### Heston Schema
 
 | Column | Type | Notes |
-|---|---|---|
-| `timestamp` | `Timestamp(ms, UTC)` | |
-| `symbol` | `Utf8` | |
+| --- | --- | --- |
+| `timestamp` | `Timestamp(ms, UTC)` | uniform grid |
+| `symbol` | `Utf8` | constant |
 | `price` | `Float64` | strictly positive |
-| `variance` | `Float64` | non-negative (post-truncation) |
+| `variance` | `Float64` | nonnegative after truncation |
 
 ---
 
-### GARCH(1,1) returns
+### GARCH(1,1) Returns
 
-Discrete-time conditional-variance model in log-returns:
+Discrete-time conditional-variance model in log returns:
 
 $$
 \begin{aligned}
-r_t &= \mu + \sigma_t\,Z_t,\quad Z_t \sim \mathcal{N}(0,1) \\
-\sigma_t^2 &= \omega + \alpha\,\varepsilon_{t-1}^2 + \beta\,\sigma_{t-1}^2 \\
+r_t &= \mu + \sigma_t Z_t,\quad Z_t \sim \mathcal{N}(0,1) \\
+\sigma_t^2 &= \omega + \alpha\varepsilon_{t-1}^2 + \beta\sigma_{t-1}^2 \\
 \varepsilon_{t-1} &= r_{t-1} - \mu
 \end{aligned}
 $$
 
-When the process is stationary ($\alpha + \beta < 1$), $\sigma_0^2$ is
-initialized to the unconditional variance
-$\bar{\sigma}^2 = \omega / (1 - \alpha - \beta)$. Otherwise it falls
-back to $\omega$.
+When `alpha + beta < 1`, the initial variance is the unconditional
+variance `omega / (1 - alpha - beta)`. Otherwise it falls back to
+`omega`.
 
-**Parameters** (`GARCHGenerator`)
+#### GARCH Parameters
 
 | Param | Default | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `s0` | `100.0` | initial price > 0 |
-| `mu` | `0.0` | mean log-return |
-| `omega` | `1e-6` | constant variance term ≥ 0 |
-| `alpha` | `0.05` | shock weight ≥ 0 |
-| `beta` | `0.90` | persistence weight ≥ 0 |
+| `mu` | `0.0` | mean log return |
+| `omega` | `1e-6` | constant variance term >= 0 |
+| `alpha` | `0.05` | shock weight >= 0 |
+| `beta` | `0.90` | persistence weight >= 0 |
 | `n_steps` | `252` | number of return draws |
 
-**Schema**
+#### GARCH Schema
 
 | Column | Type | Notes |
-|---|---|---|
-| `timestamp` | `Timestamp(ms, UTC)` | |
-| `symbol` | `Utf8` | |
-| `price` | `Float64` | $S_t = S_{t-1} e^{r_t}$ |
+| --- | --- | --- |
+| `timestamp` | `Timestamp(ms, UTC)` | uniform grid |
+| `symbol` | `Utf8` | constant |
+| `price` | `Float64` | updated with `S_t = S_{t-1} exp(r_t)` |
 | `return` | `Float64` | first row is `0.0` |
 | `sigma` | `Float64` | conditional volatility, strictly positive |
 
 ---
 
-### OHLCV synthesis from a close series
+### OHLCV Synthesis From Close
 
-`ohlc_from_close()` is a utility, not a stochastic model: it takes any
-existing series of close prices (typically the `price` column from one
-of the generators above) and synthesizes plausible Open/High/Low/Volume
-columns around it.
+`ohlc_from_close()` takes any close series and synthesizes plausible
+Open/High/Low/Volume columns around it.
 
 For each bar `i`:
 
@@ -182,27 +183,26 @@ ret_i   = log(close_i / close_{i-1})           (ret_0 = 0)
 vol_i   = base_volume + vol_factor * |ret_i|
 ```
 
-with $U_1, U_2 \sim \mathcal{U}(0, 1)$ independent. This guarantees the
-canonical bar invariants `high ≥ max(open, close)` and
-`low ≤ min(open, close)` regardless of the `intrabar_vol` setting.
+This guarantees `high >= max(open, close)` and
+`low <= min(open, close)`.
 
-**Parameters**
+#### OHLCV Parameters
 
 | Param | Default | Meaning |
-|---|---|---|
-| `close` | (required) | iterable / list / numpy / `pl.Series` of floats |
+| --- | --- | --- |
+| `close` | required | iterable, numpy array, or `pl.Series` of floats |
 | `intrabar_vol` | `0.005` | per-bar high/low envelope width |
 | `base_volume` | `1_000_000` | floor volume |
-| `vol_factor` | `5e7` | volume sensitivity to absolute log-return |
-| `symbol` | `"SYM"` | |
-| `start_ms` | `0` | |
-| `step_ms` | `86_400_000` | |
+| `vol_factor` | `5e7` | volume sensitivity to absolute log return |
+| `symbol` | `"SYM"` | symbol label |
+| `start_ms` | `0` | first timestamp, epoch ms UTC |
+| `step_ms` | `86_400_000` | timestamp spacing |
 | `seed` | `None` | RNG seed |
 
-**Schema**
+#### OHLCV Schema
 
 | Column | Type |
-|---|---|
+| --- | --- |
 | `timestamp` | `Timestamp(ms, UTC)` |
 | `symbol` | `Utf8` |
 | `open` | `Float64` |
@@ -213,90 +213,221 @@ canonical bar invariants `high ≥ max(open, close)` and
 
 ---
 
-## Cross-sectional panels
+## Cross-Sectional Panels
 
-Three pure-Python helpers produce panels for testing alpha / risk
-calculations that operate over `(date, symbol)` pairs. They use
-`numpy.random.default_rng(seed)` rather than the Rust ChaCha8 RNG;
-seeded outputs are reproducible within a single numpy version.
+Three pydantic generator models produce panels for testing alpha and
+risk code that operates over `(date, symbol)` pairs. The legacy
+`generate_signal`, `generate_factor_loadings`, and `generate_benchmark`
+helpers remain as thin wrappers around the matching model classes. They
+use `numpy.random.default_rng(seed)`.
 
-### `generate_signal`
+### `SignalGenerator`
 
 Long-form panel `[date, symbol, signal, fwd_returns]` constructed so
 that the cross-sectional Pearson IC of `signal` against `fwd_returns`
-is approximately `ic` per date. The signal is built from the
-standardised forward returns plus orthogonal noise:
+is approximately `ic` per date:
 
 $$
 \mathrm{signal} = ic \cdot z(\mathrm{fwd}) + \sqrt{1 - ic^2}\,\varepsilon
 $$
 
 | Param | Default | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `n_dates` | `252` | rows in the date dimension |
 | `n_assets` | `50` | rows in the asset dimension |
 | `ic` | `0.05` | target per-date Pearson IC, in `(-1, 1)` |
-| `return_vol` | `0.02` | cross-sectional std of forward returns |
+| `return_vol` | `0.02` | cross-sectional standard deviation of fwd returns |
 | `seed` | `None` | numpy RNG seed |
 | `start` | `2020-01-01` | first date |
 | `symbols` | `None` | optional explicit symbol list |
 
-Output schema:
+Output schema: `date`, `symbol`, `signal`, `fwd_returns`.
 
-| Column | Type |
-|---|---|
-| `date` | `Date` |
-| `symbol` | `Utf8` |
-| `signal` | `Float64` |
-| `fwd_returns` | `Float64` |
+Convenience wrapper: `generate_signal(...)`.
 
-### `generate_factor_loadings`
+### `FactorLoadingsGenerator`
 
-Wide-form Barra-style factor loadings, one row per asset.
-
-The `market` factor (when present) is set to 1.0 for every asset.
-Every other factor is drawn iid $\mathcal{N}(0, 1)$ and standardised
-cross-sectionally to mean zero, unit std (population, `ddof=0`).
+Wide-form Barra-style factor loadings, one row per asset. The `market`
+factor is set to 1.0 when present. Other factors are drawn from a
+standard normal distribution and standardized cross-sectionally.
 
 | Param | Default | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `n_assets` | `50` | row count |
-| `factors` | `("market", "value", "momentum", "size", "quality")` | column names |
+| `factors` | `("market", "value", "momentum", "size", "quality")` | factor columns |
 | `seed` | `None` | numpy RNG seed |
 | `symbols` | `None` | optional explicit symbol list |
 
-Output schema: `symbol` (`Utf8`) plus one `Float64` column per factor.
+Output schema: `symbol` plus one numeric column per factor.
 
-### `generate_benchmark`
+Convenience wrapper: `generate_factor_loadings(...)`.
 
-Independent Gaussian benchmark return series with target annualised
-mean `annual_return` and target annualised volatility `annual_vol`.
+### `BenchmarkGenerator`
+
+Independent Gaussian benchmark return series with target annualized mean
+and volatility.
 
 | Param | Default | Meaning |
-|---|---|---|
+| --- | --- | --- |
 | `n_dates` | `252` | row count |
-| `annual_return` | `0.08` | target annualised mean |
-| `annual_vol` | `0.16` | target annualised volatility |
-| `periods_per_year` | `252` | annualisation factor |
+| `annual_return` | `0.08` | target annualized mean |
+| `annual_vol` | `0.16` | target annualized volatility |
+| `periods_per_year` | `252` | annualization factor |
 | `seed` | `None` | numpy RNG seed |
 | `start` | `2020-01-01` | first date |
 
-Output schema:
+Output schema: `date`, `benchmark`.
 
-| Column | Type |
-|---|---|
-| `date` | `Date` |
-| `benchmark` | `Float64` |
+Convenience wrapper: `generate_benchmark(...)`.
+
+---
+
+## Portfolio and Transaction Generators
+
+These Python generators create deterministic post-trade fixtures for
+turnover, transaction cost, and execution quality tests.
+
+### `PositionsGenerator`
+
+Long-form position panel with one row per `(date, symbol)`. Per-date
+absolute weights are normalized to `gross_exposure`; `market_value` is
+`weight * portfolio_value`, and `quantity` is `market_value / price`.
+
+| Param | Default | Meaning |
+| --- | --- | --- |
+| `n_dates` | `252` | number of dates |
+| `n_assets` | `50` | assets per date |
+| `portfolio_value` | `1_000_000.0` | equity denominator for market value |
+| `gross_exposure` | `1.0` | per-date sum of absolute weights |
+| `average_price` | `100.0` | center of synthetic price distribution |
+| `price_vol` | `0.02` | daily log-return volatility for marks |
+| `seed` | `None` | numpy RNG seed |
+| `start` | `2020-01-01` | first date |
+| `symbols` | `None` | optional explicit symbol list |
+
+Output schema: `date`, `symbol`, `price`, `quantity`, `market_value`,
+`weight`.
+
+Convenience wrapper: `generate_positions(...)`.
+
+### `TransactionsGenerator`
+
+Synthetic transaction log with enum-backed `side` and `position_effect`
+labels from `finance-enums`. `amount` is positive for `Buy` and
+negative for `Sell`; opening and closing intent is represented by
+`position_effect`. `notional` is `abs(amount) * price`; `fees` are
+computed from `fee_bps`.
+
+| Param | Default | Meaning |
+| --- | --- | --- |
+| `n_dates` | `252` | number of trade dates |
+| `n_assets` | `50` | symbol universe size |
+| `trades_per_day` | `25` | rows per date |
+| `average_price` | `100.0` | center of trade-price distribution |
+| `price_vol` | `0.25` | lognormal price dispersion |
+| `max_amount` | `1_000` | max absolute share amount per row |
+| `commission` | `1.0` | explicit commission per trade |
+| `fee_bps` | `0.2` | explicit fee rate in basis points |
+| `bps` | `5.0` | slippage or cost assumption column |
+| `seed` | `None` | numpy RNG seed |
+| `start` | `2020-01-01` | first trade date |
+| `symbols` | `None` | optional explicit symbol list |
+
+Output schema: `timestamp`, `symbol`, `amount`, `price`, `side`,
+`position_effect`, `notional`, `commission`, `fees`, `bps`.
+
+Convenience wrapper: `generate_transactions(...)`.
+
+---
+
+## Multi-Asset, Regime, and Market-Impact Generators
+
+### `MultiAssetGBMGenerator`
+
+Correlated multi-asset GBM with either a constant off-diagonal
+correlation `rho` or a caller-provided correlation matrix `corr`. The
+output is long-form `[timestamp, symbol, price, return]`; the first row
+for each symbol has `return = 0.0`.
+
+Convenience wrapper: `generate_multi_asset_gbm(...)`.
+
+### `RegimeSwitchingGenerator`
+
+Single-symbol Markov regime-switching path. The transition matrix rows
+must sum to one. Regime-specific means and volatilities generate log
+returns, and the output includes an integer `regime` label per timestamp.
+
+Convenience wrapper: `generate_regime_switching(...)`.
+
+### `MarketImpactCurveGenerator`
+
+Generates participation-rate curves for temporary and permanent market
+impact. The default model uses square-root temporary impact and linear
+permanent impact:
+
+```text
+temporary_impact_bps = temporary_impact_coef * volatility * sqrt(participation_rate) * 10_000
+permanent_impact_bps = permanent_impact_coef * volatility * participation_rate * 10_000
+```
+
+Output schema: `symbol`, `participation_rate`, `adv`, `volatility`,
+`temporary_impact_bps`, `permanent_impact_bps`, `total_impact_bps`.
+
+Convenience wrapper: `generate_market_impact_curve(...)`.
+
+---
+
+## Risk-Model Generators
+
+### `StatisticalRiskModelGenerator`
+
+Creates a synthetic asset-return matrix from latent factors, then fits a
+PCA-style statistical risk model. `.generate()` returns a dictionary
+with three polars frames:
+
+| Key | Schema |
+| --- | --- |
+| `factor_loadings` | `symbol`, `factor_1`, ..., `factor_n` |
+| `factor_returns` | `date`, `factor_1`, ..., `factor_n` |
+| `specific_variance` | `symbol`, `specific_variance` |
+
+Convenience wrapper: `generate_statistical_risk_model(...)`.
+
+### `FundamentalRiskModelGenerator`
+
+Creates Barra-style factor loadings with a categorical `sector` drawn
+from the `finance-enums` sector taxonomy, a constant `market` exposure
+of `1.0`, standardized style factors
+(`value`, `momentum`, `size`, `quality`, `low_vol`, `growth` by
+default), and positive `specific_variance`.
+
+Convenience wrapper: `generate_fundamental_risk_model(...)`.
+
+### `FactorCovarianceGenerator`
+
+Creates a symmetric positive semidefinite covariance matrix with a
+leading `factor` label column and one numeric column per factor. Factor
+volatilities decay by `eigen_decay`, and cross-factor correlations decay
+with factor distance.
+
+Convenience wrapper: `generate_factor_covariance(...)`.
+
+### `SpecificVarianceGenerator`
+
+Creates a positive idiosyncratic variance vector with lognormal
+dispersion around `target_vol ** 2`.
+
+Convenience wrapper: `generate_specific_variance(...)`.
 
 ---
 
 ## Reproducibility
 
 Every generator and `ohlc_from_close` accept an optional `seed: int`.
-Internally the seed initializes a `ChaCha8` PRNG (via `rand_chacha`),
-which is portable across platforms and architectures: the same seed
-will produce bit-identical outputs on Linux/macOS/Windows and on
-x86-64/aarch64.
+Rust generators initialize a `ChaCha8` PRNG (via `rand_chacha`), which
+is portable across platforms and architectures. Python generators
+initialize `numpy.random.default_rng(seed)` and are deterministic within
+the same numpy version.
 
 ```python
 from finance_datagen import GBMGenerator
@@ -320,7 +451,7 @@ Arrow is a stable, language-agnostic columnar format: the Rust side
 builds an `arrow_array::RecordBatch`, hands it to Python over the
 [Arrow C Data Interface](https://arrow.apache.org/docs/format/CDataInterface.html)
 PyCapsule, and the Python side calls `polars.from_arrow(batch)` to wrap
-the same buffers (zero-copy) into a `polars.DataFrame`.
+the same buffers into a `polars.DataFrame`.
 
 If you prefer to skip the polars wrapping, you can pull the raw
 `pyarrow.RecordBatch` out of the Rust extension directly:
