@@ -1,5 +1,5 @@
 [package]
-name = "finance_datagen"
+name = "finance-datagen"
 version = "0.2.0"
 authors = ["PrettyGoodCapital <prettygoodcapital@gmail.com>"]
 edition = "2021"
