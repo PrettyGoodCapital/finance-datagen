@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 import polars as pl
 import pytest
 from finance_enums import PositionEffect, Side
@@ -54,3 +56,64 @@ def test_transactions_generator_validates_shape() -> None:
 
     with pytest.raises(ValueError, match="symbols length"):
         fd.TransactionsGenerator(n_assets=3, symbols=["A", "B"])
+
+
+def test_positions_and_transactions_optional_enum_metadata() -> None:
+    positions = fd.PositionsGenerator(n_dates=3, n_assets=2, seed=1, currency="USD", exchange="XNYS", include_region=True).generate()
+    transactions = fd.TransactionsGenerator(
+        n_dates=3,
+        n_assets=2,
+        trades_per_day=2,
+        seed=2,
+        currency="USD",
+        exchange="XNYS",
+        include_region=True,
+    ).generate()
+
+    assert {"currency", "exchange", "region"} <= set(positions.columns)
+    assert {"currency", "exchange", "region"} <= set(transactions.columns)
+    assert set(positions["currency"].unique().to_list()) == {"USD"}
+    assert set(transactions["exchange"].unique().to_list()) == {"XNYS"}
+    assert positions["region"].n_unique() == 1
+
+
+def test_positions_uses_exchange_business_days() -> None:
+    positions = fd.PositionsGenerator(n_dates=4, n_assets=2, start=date(2024, 7, 1), exchange="XNYS", seed=8).generate()
+    days = positions.select("date").unique().sort("date")["date"].to_list()
+    assert date(2024, 7, 4) not in days
+    assert len(days) == 4
+
+
+def test_orders_and_executions_generators_schema() -> None:
+    orders = fd.OrdersGenerator(n_dates=2, n_assets=3, orders_per_day=4, seed=3, currency="USD", exchange="XNYS").generate()
+    executions = fd.ExecutionsGenerator(n_dates=2, n_assets=3, executions_per_day=5, seed=4, currency="USD", exchange="XNYS").generate()
+
+    assert {
+        "timestamp",
+        "symbol",
+        "order_id",
+        "side",
+        "order_type",
+        "quantity",
+        "limit_price",
+        "order_status",
+        "time_in_force",
+        "currency",
+        "exchange",
+    } <= set(orders.columns)
+    assert {
+        "timestamp",
+        "execution_id",
+        "order_id",
+        "symbol",
+        "side",
+        "price",
+        "quantity",
+        "liquidity_flag",
+        "time_in_force",
+        "currency",
+        "exchange",
+    } <= set(executions.columns)
+
+    assert set(orders["side"].unique().to_list()) <= {Side.Buy.value, Side.Sell.value}
+    assert set(executions["side"].unique().to_list()) <= {Side.Buy.value, Side.Sell.value}

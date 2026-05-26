@@ -1,11 +1,11 @@
 [package]
 name = "finance_datagen"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["PrettyGoodCapital <prettygoodcapital@gmail.com>"]
 edition = "2021"
 license = "Apache-2.0"
 readme = "../README.md"
-repository = "https://github.com/prettygoodcapital/finance datagen"
+repository = "https://github.com/prettygoodcapital/finance-datagen"
 description = "Standard financial data generation"
 
 [lib]
