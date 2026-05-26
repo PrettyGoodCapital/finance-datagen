@@ -7,7 +7,17 @@ from typing import Sequence
 
 import numpy as np
 import polars as pl
-from finance_enums import PositionEffect, Side
+from finance_dates import Calendar
+from finance_enums import (
+    Currency,
+    ExchangeCode,
+    OrderStatus,
+    OrderType,
+    PositionEffect,
+    Side,
+    TimeInForce,
+    exchange_record,
+)
 from pydantic import model_validator
 
 from ._base import DataGenerator, NonNegativeFloat, PositiveFloat, PositiveInt
@@ -23,6 +33,20 @@ _TRANSACTION_INTENTS = (
 def _date_range(n_dates: int, start: date | None) -> list[date]:
     first = date(2020, 1, 1) if start is None else start
     return [first + timedelta(days=i) for i in range(n_dates)]
+
+
+def _trading_date_range(n_dates: int, start: date | None, exchange: str | None) -> list[date]:
+    if exchange is None:
+        return _date_range(n_dates, start)
+
+    first = date(2020, 1, 1) if start is None else start
+    calendar = Calendar.from_exchange(exchange)
+    window_end = first + timedelta(days=max(10, n_dates * 3))
+    dates = calendar.business_days(first, window_end)
+    while len(dates) < n_dates:
+        window_end = window_end + timedelta(days=max(10, n_dates * 2))
+        dates = calendar.business_days(first, window_end)
+    return dates[:n_dates]
 
 
 def _symbols(n_assets: int, symbols: Sequence[str] | None) -> list[str]:
@@ -44,16 +68,23 @@ class PositionsGenerator(DataGenerator[pl.DataFrame]):
     seed: int | None = None
     start: date | None = None
     symbols: tuple[str, ...] | None = None
+    currency: str | None = None
+    exchange: str | None = None
+    include_region: bool = False
 
     @model_validator(mode="after")
     def _validate_symbols(self):
         _symbols(self.n_assets, self.symbols)
+        if self.currency is not None:
+            Currency(self.currency)
+        if self.exchange is not None:
+            ExchangeCode(self.exchange)
         return self
 
     def generate(self) -> pl.DataFrame:
         """Return ``[date, symbol, price, quantity, market_value, weight]``."""
         rng = np.random.default_rng(self.seed)
-        dates = _date_range(self.n_dates, self.start)
+        dates = _trading_date_range(self.n_dates, self.start, self.exchange)
         symbols = _symbols(self.n_assets, self.symbols)
 
         base_prices = self.average_price * rng.lognormal(mean=0.0, sigma=0.25, size=self.n_assets)
@@ -66,7 +97,7 @@ class PositionsGenerator(DataGenerator[pl.DataFrame]):
         market_values = weights * self.portfolio_value
         quantities = market_values / prices
 
-        return pl.DataFrame(
+        frame = pl.DataFrame(
             {
                 "date": np.repeat(np.array(dates, dtype="datetime64[D]"), self.n_assets),
                 "symbol": np.tile(np.array(symbols), self.n_dates),
@@ -76,6 +107,18 @@ class PositionsGenerator(DataGenerator[pl.DataFrame]):
                 "weight": weights.reshape(-1),
             }
         ).with_columns(pl.col("date").cast(pl.Date))
+
+        if self.currency is not None:
+            frame = frame.with_columns(pl.lit(self.currency).alias("currency"))
+
+        if self.exchange is not None:
+            frame = frame.with_columns(pl.lit(self.exchange).alias("exchange"))
+            if self.include_region:
+                record = exchange_record(self.exchange)
+                region = None if record is None else record.region
+                frame = frame.with_columns(pl.lit(region).alias("region"))
+
+        return frame
 
 
 class TransactionsGenerator(DataGenerator[pl.DataFrame]):
@@ -93,22 +136,38 @@ class TransactionsGenerator(DataGenerator[pl.DataFrame]):
     seed: int | None = None
     start: date | None = None
     symbols: tuple[str, ...] | None = None
+    currency: str | None = None
+    exchange: str | None = None
+    include_region: bool = False
 
     @model_validator(mode="after")
     def _validate_symbols(self):
         _symbols(self.n_assets, self.symbols)
+        if self.currency is not None:
+            Currency(self.currency)
+        if self.exchange is not None:
+            ExchangeCode(self.exchange)
         return self
 
     def generate(self) -> pl.DataFrame:
         """Return transaction rows with side labels and explicit costs."""
         rng = np.random.default_rng(self.seed)
-        dates = _date_range(self.n_dates, self.start)
+        dates = _trading_date_range(self.n_dates, self.start, self.exchange)
         n_rows = self.n_dates * self.trades_per_day
         transaction_intents = np.asarray(_TRANSACTION_INTENTS, dtype=object)
         symbols = _symbols(self.n_assets, self.symbols)
 
         timestamps: list[datetime] = []
+        calendar = Calendar.from_exchange(self.exchange) if self.exchange is not None else None
         for current_date in dates:
+            if calendar is not None:
+                sessions = calendar.sessions(current_date, current_date)
+                if sessions:
+                    session_open, session_close = sessions[0]
+                    span_seconds = max(1, int((session_close - session_open).total_seconds()))
+                    offsets = np.sort(rng.integers(0, span_seconds + 1, size=self.trades_per_day))
+                    timestamps.extend(session_open + timedelta(seconds=int(offset)) for offset in offsets)
+                    continue
             base = datetime.combine(current_date, time(9, 30), tzinfo=timezone.utc)
             offsets = np.sort(rng.integers(0, 6 * 60 * 60 + 30 * 60, size=self.trades_per_day))
             timestamps.extend(base + timedelta(seconds=int(offset)) for offset in offsets)
@@ -121,7 +180,7 @@ class TransactionsGenerator(DataGenerator[pl.DataFrame]):
         prices = self.average_price * rng.lognormal(mean=0.0, sigma=self.price_vol, size=n_rows)
         notional = np.abs(signed_amounts) * prices
 
-        return pl.DataFrame(
+        frame = pl.DataFrame(
             {
                 "timestamp": pl.Series(timestamps).cast(pl.Datetime("ms", "UTC")),
                 "symbol": rng.choice(np.array(symbols), size=n_rows),
@@ -136,6 +195,184 @@ class TransactionsGenerator(DataGenerator[pl.DataFrame]):
             }
         )
 
+        if self.currency is not None:
+            frame = frame.with_columns(pl.lit(self.currency).alias("currency"))
+
+        if self.exchange is not None:
+            frame = frame.with_columns(pl.lit(self.exchange).alias("exchange"))
+            if self.include_region:
+                record = exchange_record(self.exchange)
+                region = None if record is None else record.region
+                frame = frame.with_columns(pl.lit(region).alias("region"))
+
+        return frame
+
+
+class OrdersGenerator(DataGenerator[pl.DataFrame]):
+    """Generate enum-backed synthetic order fixtures."""
+
+    n_dates: PositiveInt = 252
+    n_assets: PositiveInt = 50
+    orders_per_day: PositiveInt = 25
+    average_price: PositiveFloat = 100.0
+    price_vol: NonNegativeFloat = 0.2
+    max_quantity: PositiveInt = 1_000
+    seed: int | None = None
+    start: date | None = None
+    symbols: tuple[str, ...] | None = None
+    exchange: str | None = None
+    currency: str | None = None
+    include_region: bool = False
+
+    @model_validator(mode="after")
+    def _validate_symbols(self):
+        _symbols(self.n_assets, self.symbols)
+        if self.exchange is not None:
+            ExchangeCode(self.exchange)
+        if self.currency is not None:
+            Currency(self.currency)
+        return self
+
+    def generate(self) -> pl.DataFrame:
+        """Return ``[timestamp, symbol, order_id, side, order_type, quantity, limit_price, order_status, time_in_force]``."""
+        rng = np.random.default_rng(self.seed)
+        dates = _trading_date_range(self.n_dates, self.start, self.exchange)
+        symbols = _symbols(self.n_assets, self.symbols)
+        n_rows = self.n_dates * self.orders_per_day
+
+        calendar = Calendar.from_exchange(self.exchange) if self.exchange is not None else None
+        timestamps: list[datetime] = []
+        for current_date in dates:
+            if calendar is not None:
+                sessions = calendar.sessions(current_date, current_date)
+                if sessions:
+                    session_open, session_close = sessions[0]
+                    span_seconds = max(1, int((session_close - session_open).total_seconds()))
+                    offsets = np.sort(rng.integers(0, span_seconds + 1, size=self.orders_per_day))
+                    timestamps.extend(session_open + timedelta(seconds=int(offset)) for offset in offsets)
+                    continue
+            base = datetime.combine(current_date, time(9, 30), tzinfo=timezone.utc)
+            offsets = np.sort(rng.integers(0, 6 * 60 * 60 + 30 * 60, size=self.orders_per_day))
+            timestamps.extend(base + timedelta(seconds=int(offset)) for offset in offsets)
+
+        frame = pl.DataFrame(
+            {
+                "timestamp": pl.Series(timestamps).cast(pl.Datetime("ms", "UTC")),
+                "symbol": rng.choice(np.array(symbols), size=n_rows),
+                "order_id": [f"ORD-{i:08d}" for i in range(n_rows)],
+                "side": rng.choice(np.array([Side.Buy.value, Side.Sell.value]), size=n_rows),
+                "order_type": rng.choice(np.array([OrderType.Market.value, OrderType.Limit.value]), size=n_rows, p=[0.55, 0.45]),
+                "quantity": rng.integers(1, self.max_quantity + 1, size=n_rows),
+                "limit_price": self.average_price * rng.lognormal(mean=0.0, sigma=self.price_vol, size=n_rows),
+                "order_status": rng.choice(
+                    np.array(
+                        [
+                            OrderStatus.New.value,
+                            OrderStatus.PartiallyFilled.value,
+                            OrderStatus.Filled.value,
+                            OrderStatus.Canceled.value,
+                            OrderStatus.Rejected.value,
+                        ]
+                    ),
+                    size=n_rows,
+                    p=[0.35, 0.25, 0.25, 0.10, 0.05],
+                ),
+                "time_in_force": rng.choice(
+                    np.array([TimeInForce.Day.value, TimeInForce.GoodTillCanceled.value]),
+                    size=n_rows,
+                    p=[0.80, 0.20],
+                ),
+            }
+        )
+
+        if self.currency is not None:
+            frame = frame.with_columns(pl.lit(self.currency).alias("currency"))
+        if self.exchange is not None:
+            frame = frame.with_columns(pl.lit(self.exchange).alias("exchange"))
+            if self.include_region:
+                record = exchange_record(self.exchange)
+                region = None if record is None else record.region
+                frame = frame.with_columns(pl.lit(region).alias("region"))
+
+        return frame
+
+
+class ExecutionsGenerator(DataGenerator[pl.DataFrame]):
+    """Generate synthetic execution fixtures tied to synthetic orders."""
+
+    n_dates: PositiveInt = 252
+    n_assets: PositiveInt = 50
+    executions_per_day: PositiveInt = 30
+    average_price: PositiveFloat = 100.0
+    price_vol: NonNegativeFloat = 0.2
+    max_quantity: PositiveInt = 1_000
+    seed: int | None = None
+    start: date | None = None
+    symbols: tuple[str, ...] | None = None
+    exchange: str | None = None
+    currency: str | None = None
+    include_region: bool = False
+
+    @model_validator(mode="after")
+    def _validate_symbols(self):
+        _symbols(self.n_assets, self.symbols)
+        if self.exchange is not None:
+            ExchangeCode(self.exchange)
+        if self.currency is not None:
+            Currency(self.currency)
+        return self
+
+    def generate(self) -> pl.DataFrame:
+        """Return ``[timestamp, order_id, symbol, side, price, quantity, liquidity_flag]``."""
+        rng = np.random.default_rng(self.seed)
+        dates = _trading_date_range(self.n_dates, self.start, self.exchange)
+        symbols = _symbols(self.n_assets, self.symbols)
+        n_rows = self.n_dates * self.executions_per_day
+
+        calendar = Calendar.from_exchange(self.exchange) if self.exchange is not None else None
+        timestamps: list[datetime] = []
+        for current_date in dates:
+            if calendar is not None:
+                sessions = calendar.sessions(current_date, current_date)
+                if sessions:
+                    session_open, session_close = sessions[0]
+                    span_seconds = max(1, int((session_close - session_open).total_seconds()))
+                    offsets = np.sort(rng.integers(0, span_seconds + 1, size=self.executions_per_day))
+                    timestamps.extend(session_open + timedelta(seconds=int(offset)) for offset in offsets)
+                    continue
+            base = datetime.combine(current_date, time(9, 30), tzinfo=timezone.utc)
+            offsets = np.sort(rng.integers(0, 6 * 60 * 60 + 30 * 60, size=self.executions_per_day))
+            timestamps.extend(base + timedelta(seconds=int(offset)) for offset in offsets)
+
+        frame = pl.DataFrame(
+            {
+                "timestamp": pl.Series(timestamps).cast(pl.Datetime("ms", "UTC")),
+                "execution_id": [f"EXE-{i:08d}" for i in range(n_rows)],
+                "order_id": [f"ORD-{int(i / 2):08d}" for i in range(n_rows)],
+                "symbol": rng.choice(np.array(symbols), size=n_rows),
+                "side": rng.choice(np.array([Side.Buy.value, Side.Sell.value]), size=n_rows),
+                "price": self.average_price * rng.lognormal(mean=0.0, sigma=self.price_vol, size=n_rows),
+                "quantity": rng.integers(1, self.max_quantity + 1, size=n_rows),
+                "liquidity_flag": rng.choice(np.array(["Added", "Removed", "Auction"]), size=n_rows, p=[0.4, 0.5, 0.1]),
+                "time_in_force": rng.choice(
+                    np.array([TimeInForce.Day.value, TimeInForce.GoodTillCanceled.value]),
+                    size=n_rows,
+                    p=[0.80, 0.20],
+                ),
+            }
+        )
+
+        if self.currency is not None:
+            frame = frame.with_columns(pl.lit(self.currency).alias("currency"))
+        if self.exchange is not None:
+            frame = frame.with_columns(pl.lit(self.exchange).alias("exchange"))
+            if self.include_region:
+                record = exchange_record(self.exchange)
+                region = None if record is None else record.region
+                frame = frame.with_columns(pl.lit(region).alias("region"))
+
+        return frame
+
 
 def generate_positions(
     n_dates: int = 252,
@@ -147,6 +384,9 @@ def generate_positions(
     seed: int | None = None,
     start: date | None = None,
     symbols: Sequence[str] | None = None,
+    currency: str | None = None,
+    exchange: str | None = None,
+    include_region: bool = False,
 ) -> pl.DataFrame:
     """Generate a synthetic positions table."""
     return PositionsGenerator(
@@ -159,6 +399,9 @@ def generate_positions(
         seed=seed,
         start=start,
         symbols=None if symbols is None else tuple(symbols),
+        currency=currency,
+        exchange=exchange,
+        include_region=include_region,
     ).generate()
 
 
@@ -175,6 +418,9 @@ def generate_transactions(
     seed: int | None = None,
     start: date | None = None,
     symbols: Sequence[str] | None = None,
+    currency: str | None = None,
+    exchange: str | None = None,
+    include_region: bool = False,
 ) -> pl.DataFrame:
     """Generate a synthetic transaction log."""
     return TransactionsGenerator(
@@ -190,4 +436,69 @@ def generate_transactions(
         seed=seed,
         start=start,
         symbols=None if symbols is None else tuple(symbols),
+        currency=currency,
+        exchange=exchange,
+        include_region=include_region,
+    ).generate()
+
+
+def generate_orders(
+    n_dates: int = 252,
+    n_assets: int = 50,
+    orders_per_day: int = 25,
+    average_price: float = 100.0,
+    price_vol: float = 0.2,
+    max_quantity: int = 1_000,
+    seed: int | None = None,
+    start: date | None = None,
+    symbols: Sequence[str] | None = None,
+    currency: str | None = None,
+    exchange: str | None = None,
+    include_region: bool = False,
+) -> pl.DataFrame:
+    """Generate synthetic order fixtures."""
+    return OrdersGenerator(
+        n_dates=n_dates,
+        n_assets=n_assets,
+        orders_per_day=orders_per_day,
+        average_price=average_price,
+        price_vol=price_vol,
+        max_quantity=max_quantity,
+        seed=seed,
+        start=start,
+        symbols=None if symbols is None else tuple(symbols),
+        currency=currency,
+        exchange=exchange,
+        include_region=include_region,
+    ).generate()
+
+
+def generate_executions(
+    n_dates: int = 252,
+    n_assets: int = 50,
+    executions_per_day: int = 30,
+    average_price: float = 100.0,
+    price_vol: float = 0.2,
+    max_quantity: int = 1_000,
+    seed: int | None = None,
+    start: date | None = None,
+    symbols: Sequence[str] | None = None,
+    currency: str | None = None,
+    exchange: str | None = None,
+    include_region: bool = False,
+) -> pl.DataFrame:
+    """Generate synthetic execution fixtures."""
+    return ExecutionsGenerator(
+        n_dates=n_dates,
+        n_assets=n_assets,
+        executions_per_day=executions_per_day,
+        average_price=average_price,
+        price_vol=price_vol,
+        max_quantity=max_quantity,
+        seed=seed,
+        start=start,
+        symbols=None if symbols is None else tuple(symbols),
+        currency=currency,
+        exchange=exchange,
+        include_region=include_region,
     ).generate()

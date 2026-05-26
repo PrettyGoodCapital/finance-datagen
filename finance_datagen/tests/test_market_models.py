@@ -72,3 +72,33 @@ def test_market_impact_curve_generator_monotone_by_participation() -> None:
 
     diffs = curves.sort("symbol", "participation_rate").group_by("symbol").agg(pl.col("total_impact_bps").diff().drop_nulls().min())
     assert (diffs["total_impact_bps"] > 0).all()
+
+
+def test_market_model_generators_optional_enum_metadata() -> None:
+    panel = fd.MultiAssetGBMGenerator(
+        n_steps=8,
+        n_assets=2,
+        seed=31,
+        instrument_type="Spot",
+        market_type="Equities",
+        venue_type="Exchange",
+    ).generate()
+    regime = fd.RegimeSwitchingGenerator(
+        n_steps=8,
+        seed=32,
+        instrument_type="Spot",
+        market_type="Equities",
+        venue_type="Exchange",
+    ).generate()
+    impact = fd.MarketImpactCurveGenerator(
+        symbols=["A"],
+        participation_rates=[0.05, 0.15],
+        seed=33,
+        market_type="Equities",
+        venue_type="Exchange",
+    ).generate()
+
+    assert {"instrument_type", "market_type", "venue_type"} <= set(panel.columns)
+    assert {"instrument_type", "market_type", "venue_type"} <= set(regime.columns)
+    assert {"market_type", "venue_type"} <= set(impact.columns)
+    assert set(panel["instrument_type"].unique().to_list()) == {"Spot"}

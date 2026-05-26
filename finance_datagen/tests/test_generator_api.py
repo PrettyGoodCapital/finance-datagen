@@ -16,6 +16,8 @@ GENERATOR_CLASSES = [
     fd.BenchmarkGenerator,
     fd.PositionsGenerator,
     fd.TransactionsGenerator,
+    fd.OrdersGenerator,
+    fd.ExecutionsGenerator,
     fd.MultiAssetGBMGenerator,
     fd.RegimeSwitchingGenerator,
     fd.MarketImpactCurveGenerator,
@@ -40,6 +42,12 @@ def test_all_public_generators_share_pydantic_base() -> None:
         assert issubclass(generator_class, fd.DataGenerator)
         generator = generator_class()
         assert hasattr(generator, "model_dump")
+
+
+def test_package_root_exports_only_documented_public_api() -> None:
+    public_names = {name for name in vars(fd) if not name.startswith("_")}
+
+    assert public_names == set(fd.__all__)
 
 
 def test_next_yields_generated_data_once() -> None:
@@ -77,13 +85,15 @@ def test_convenience_functions_instantiate_matching_models() -> None:
         (fd.generate_benchmark, fd.BenchmarkGenerator, {"n_dates": 5, "seed": 5}),
         (fd.generate_positions, fd.PositionsGenerator, {"n_dates": 2, "n_assets": 3, "seed": 6}),
         (fd.generate_transactions, fd.TransactionsGenerator, {"n_dates": 2, "n_assets": 3, "trades_per_day": 2, "seed": 7}),
-        (fd.generate_multi_asset_gbm, fd.MultiAssetGBMGenerator, {"n_steps": 2, "n_assets": 3, "seed": 8}),
-        (fd.generate_regime_switching, fd.RegimeSwitchingGenerator, {"n_steps": 3, "seed": 9}),
-        (fd.generate_market_impact_curve, fd.MarketImpactCurveGenerator, {"n_assets": 3, "seed": 10}),
-        (fd.generate_statistical_risk_model, fd.StatisticalRiskModelGenerator, {"n_dates": 6, "n_assets": 4, "n_factors": 2, "seed": 11}),
-        (fd.generate_fundamental_risk_model, fd.FundamentalRiskModelGenerator, {"n_assets": 5, "seed": 12}),
-        (fd.generate_factor_covariance, fd.FactorCovarianceGenerator, {"factors": ("market", "value"), "seed": 13}),
-        (fd.generate_specific_variance, fd.SpecificVarianceGenerator, {"n_assets": 4, "seed": 14}),
+        (fd.generate_orders, fd.OrdersGenerator, {"n_dates": 2, "n_assets": 3, "orders_per_day": 2, "seed": 8}),
+        (fd.generate_executions, fd.ExecutionsGenerator, {"n_dates": 2, "n_assets": 3, "executions_per_day": 2, "seed": 9}),
+        (fd.generate_multi_asset_gbm, fd.MultiAssetGBMGenerator, {"n_steps": 2, "n_assets": 3, "seed": 10}),
+        (fd.generate_regime_switching, fd.RegimeSwitchingGenerator, {"n_steps": 3, "seed": 11}),
+        (fd.generate_market_impact_curve, fd.MarketImpactCurveGenerator, {"n_assets": 3, "seed": 12}),
+        (fd.generate_statistical_risk_model, fd.StatisticalRiskModelGenerator, {"n_dates": 6, "n_assets": 4, "n_factors": 2, "seed": 13}),
+        (fd.generate_fundamental_risk_model, fd.FundamentalRiskModelGenerator, {"n_assets": 5, "seed": 14}),
+        (fd.generate_factor_covariance, fd.FactorCovarianceGenerator, {"factors": ("market", "value"), "seed": 15}),
+        (fd.generate_specific_variance, fd.SpecificVarianceGenerator, {"n_assets": 4, "seed": 16}),
     ]
 
     for helper, generator_class, kwargs in cases:

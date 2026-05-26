@@ -13,7 +13,7 @@ authors = [
 description = "Standard financial data generation"
 readme = "README.md"
 license = { text = "Apache-2.0" }
-version = "0.1.1"
+version = "0.2.0"
 requires-python = ">=3.10"
 keywords = []
 
@@ -32,7 +32,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "finance-enums>=0.4.0",
+    "finance-dates>=0.2.0,<0.3",
+    "finance-enums>=0.5.1,<0.6",
     "numpy",
     "pydantic>=2",
     "polars>=1.0",
@@ -67,7 +68,7 @@ Repository = "https://github.com/prettygoodcapital/finance-datagen"
 Homepage = "https://github.com/prettygoodcapital/finance-datagen"
 
 [tool.bumpversion]
-current_version = "0.1.1"
+current_version = "0.2.0"
 commit = true
 tag = true
 commit_args = "-s"
@@ -94,6 +95,7 @@ replace = 'version = "{new_version}"'
 
 [tool.cibuildwheel]
 build = "cp310-*"
+skip = "*i686* *musllinux* *win32 *arm_64"
 test-command = "pytest -vvv {project}/finance_datagen/tests"
 test-extras = "develop"
 
@@ -105,15 +107,13 @@ rustup target add x86_64-unknown-linux-gnu
 rustup show
 """
 environment = {PATH="$HOME/.cargo/bin:$PATH", CARGO_TERM_COLOR="always"}
-skip = "*i686* *musllinux*"
 
 [tool.cibuildwheel.macos]
-environment = {PATH="$HOME/.cargo/bin:$PATH", CARGO_TERM_COLOR="always", MACOS_DEPLOYMENT_TARGET=11.0}
+environment = {PATH="$HOME/.cargo/bin:$PATH", CARGO_TERM_COLOR="always", MACOS_DEPLOYMENT_TARGET="11.0"}
 archs = "arm64"
 
 [tool.cibuildwheel.windows]
 environment = {PATH="$UserProfile\\.cargo\bin;$PATH", CARGO_TERM_COLOR="always"}
-skip = "*win32 *arm_64"
 
 [tool.coverage.run]
 branch = true

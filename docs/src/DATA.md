@@ -13,30 +13,47 @@ via `next(generator)`.
 This page documents the data: stochastic models, generator parameters,
 and output schemas.
 
----
+______________________________________________________________________
 
 ## Conventions
 
 All tabular outputs share the following conventions:
 
-| Aspect | Convention |
-| --- | --- |
+| Aspect           | Convention                                                               |
+| ---------------- | ------------------------------------------------------------------------ |
 | Timestamp column | `timestamp` of type `Timestamp(Millisecond, UTC)` unless noted otherwise |
-| Symbol column | `symbol` of type `Utf8` |
-| Numeric columns | `Float64` |
-| Path length | A path generator with `n_steps` returns `n_steps + 1` rows |
-| Time grid | Uniform: `start_ms + i * step_ms` for `i = 0..=n_steps` |
-| Reproducibility | Fixed `seed: int` gives deterministic outputs for that generator family |
+| Symbol column    | `symbol` of type `Utf8`                                                  |
+| Numeric columns  | `Float64`                                                                |
+| Path length      | A path generator with `n_steps` returns `n_steps + 1` rows               |
+| Time grid        | Uniform: `start_ms + i * step_ms` for `i = 0..=n_steps`                  |
+| Reproducibility  | Fixed `seed: int` gives deterministic outputs for that generator family  |
 
 Most generators also have a matching `generate_*` convenience function
 that instantiates the model for validation and returns `.generate()`.
+
+### Enum-backed metadata
+
+Generators that emit tradeable assets can add optional enum-backed
+metadata columns without changing their primary schema:
+
+| Family                                                                                  | Optional fields                                                                          |
+| --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `GBMGenerator`, `HestonGenerator`, `GARCHGenerator`                                     | `currency`, `exchange`, `include_region`, `instrument_type`, `market_type`, `venue_type` |
+| `MultiAssetGBMGenerator`, `RegimeSwitchingGenerator`                                    | `instrument_type`, `market_type`, `venue_type`                                           |
+| `MarketImpactCurveGenerator`                                                            | `market_type`, `venue_type`                                                              |
+| `PositionsGenerator`, `TransactionsGenerator`, `OrdersGenerator`, `ExecutionsGenerator` | `currency`, `exchange`, `include_region`                                                 |
+
+Metadata values are validated by `finance-enums`. When an exchange is
+provided to the portfolio, transaction, order, or execution generators,
+dates and timestamps are drawn from the matching `finance-dates`
+exchange calendar.
 
 The `dt` parameter controls the modeling time step used in SDE
 discretization; `step_ms` controls only the timestamp column. They are
 independent: a daily model (`dt = 1/252`) can be emitted on a second or
 minute timestamp grid for testing.
 
----
+______________________________________________________________________
 
 ## Models
 
@@ -45,39 +62,39 @@ minute timestamp grid for testing.
 The classic Black-Scholes log-normal price process.
 
 $$
-dS_t = \mu S_t \, dt + \sigma S_t \, dW_t
+dS_t = \\mu S_t , dt + \\sigma S_t , dW_t
 $$
 
 Discretized exactly in log-space:
 
 $$
-S_{t+1} = S_t \exp\!\Big( (\mu - \tfrac{1}{2}\sigma^2)\,dt + \sigma\sqrt{dt}\,Z \Big),
-\quad Z \sim \mathcal{N}(0, 1)
+S\_{t+1} = S_t \\exp!\\Big( (\\mu - \\tfrac{1}{2}\\sigma^2),dt + \\sigma\\sqrt{dt},Z \\Big),
+\\quad Z \\sim \\mathcal{N}(0, 1)
 $$
 
 #### GBM Parameters
 
-| Param | Default | Meaning |
-| --- | --- | --- |
-| `s0` | `100.0` | initial price, must be > 0 |
-| `mu` | `0.05` | drift, annualized |
-| `sigma` | `0.2` | volatility, annualized and nonnegative |
-| `dt` | `1/252` | model time step in years |
-| `n_steps` | `252` | number of return draws |
-| `symbol` | `"SYM"` | label written into the `symbol` column |
-| `start_ms` | `0` | first timestamp, epoch ms UTC |
-| `step_ms` | `86_400_000` | timestamp spacing, one day by default |
-| `seed` | `None` | RNG seed |
+| Param      | Default      | Meaning                                |
+| ---------- | ------------ | -------------------------------------- |
+| `s0`       | `100.0`      | initial price, must be > 0             |
+| `mu`       | `0.05`       | drift, annualized                      |
+| `sigma`    | `0.2`        | volatility, annualized and nonnegative |
+| `dt`       | `1/252`      | model time step in years               |
+| `n_steps`  | `252`        | number of return draws                 |
+| `symbol`   | `"SYM"`      | label written into the `symbol` column |
+| `start_ms` | `0`          | first timestamp, epoch ms UTC          |
+| `step_ms`  | `86_400_000` | timestamp spacing, one day by default  |
+| `seed`     | `None`       | RNG seed                               |
 
 #### GBM Schema
 
-| Column | Type | Notes |
-| --- | --- | --- |
-| `timestamp` | `Timestamp(ms, UTC)` | uniform grid |
-| `symbol` | `Utf8` | constant |
-| `price` | `Float64` | strictly positive |
+| Column      | Type                 | Notes             |
+| ----------- | -------------------- | ----------------- |
+| `timestamp` | `Timestamp(ms, UTC)` | uniform grid      |
+| `symbol`    | `Utf8`               | constant          |
+| `price`     | `Float64`            | strictly positive |
 
----
+______________________________________________________________________
 
 ### Heston Stochastic Volatility
 
@@ -85,60 +102,60 @@ Two-factor SDE with mean-reverting variance and correlated price and
 variance shocks:
 
 $$
-\begin{aligned}
-dS_t &= \mu S_t\,dt + \sqrt{v_t}\,S_t\,dW_t^{S} \\
-dv_t &= \kappa(\theta - v_t)\,dt + \xi\sqrt{v_t}\,dW_t^{v} \\
-\mathrm{Corr}(dW^S, dW^v) &= \rho
-\end{aligned}
+\\begin{aligned}
+dS_t &= \\mu S_t,dt + \\sqrt{v_t},S_t,dW_t^{S} \\
+dv_t &= \\kappa(\\theta - v_t),dt + \\xi\\sqrt{v_t},dW_t^{v} \\
+\\mathrm{Corr}(dW^S, dW^v) &= \\rho
+\\end{aligned}
 $$
 
 The implementation uses full-truncation Euler on variance, then
 log-Euler on price:
 
 $$
-\begin{aligned}
-v_{t+1} &= v_t + \kappa(\theta - v_t^+)\,dt + \xi\sqrt{v_t^+\,dt}\,Z_v \\
-S_{t+1} &= S_t \exp\!\Big( (\mu - \tfrac{1}{2}v_t^+)\,dt + \sqrt{v_t^+\,dt}\,Z_S \Big)
-\end{aligned}
+\\begin{aligned}
+v\_{t+1} &= v_t + \\kappa(\\theta - v_t^+),dt + \\xi\\sqrt{v_t^+,dt},Z_v \\
+S\_{t+1} &= S_t \\exp!\\Big( (\\mu - \\tfrac{1}{2}v_t^+),dt + \\sqrt{v_t^+,dt},Z_S \\Big)
+\\end{aligned}
 $$
 
-where $v_t^+ = \max(v_t, 0)$.
+where $v_t^+ = \\max(v_t, 0)$.
 
 #### Heston Parameters
 
-| Param | Default | Meaning |
-| --- | --- | --- |
-| `s0` | `100.0` | initial price > 0 |
-| `v0` | `0.04` | initial variance >= 0 |
-| `mu` | `0.05` | risk-neutral or physical drift |
-| `kappa` | `2.0` | mean-reversion speed, nonnegative |
-| `theta` | `0.04` | long-run variance, nonnegative |
-| `xi` | `0.3` | vol-of-vol, nonnegative |
-| `rho` | `-0.7` | leverage correlation, must satisfy `abs(rho) <= 1` |
-| `dt` | `1/252` | model time step in years |
-| `n_steps` | `252` | number of draws |
+| Param     | Default | Meaning                                            |
+| --------- | ------- | -------------------------------------------------- |
+| `s0`      | `100.0` | initial price > 0                                  |
+| `v0`      | `0.04`  | initial variance >= 0                              |
+| `mu`      | `0.05`  | risk-neutral or physical drift                     |
+| `kappa`   | `2.0`   | mean-reversion speed, nonnegative                  |
+| `theta`   | `0.04`  | long-run variance, nonnegative                     |
+| `xi`      | `0.3`   | vol-of-vol, nonnegative                            |
+| `rho`     | `-0.7`  | leverage correlation, must satisfy `abs(rho) <= 1` |
+| `dt`      | `1/252` | model time step in years                           |
+| `n_steps` | `252`   | number of draws                                    |
 
 #### Heston Schema
 
-| Column | Type | Notes |
-| --- | --- | --- |
-| `timestamp` | `Timestamp(ms, UTC)` | uniform grid |
-| `symbol` | `Utf8` | constant |
-| `price` | `Float64` | strictly positive |
-| `variance` | `Float64` | nonnegative after truncation |
+| Column      | Type                 | Notes                        |
+| ----------- | -------------------- | ---------------------------- |
+| `timestamp` | `Timestamp(ms, UTC)` | uniform grid                 |
+| `symbol`    | `Utf8`               | constant                     |
+| `price`     | `Float64`            | strictly positive            |
+| `variance`  | `Float64`            | nonnegative after truncation |
 
----
+______________________________________________________________________
 
 ### GARCH(1,1) Returns
 
 Discrete-time conditional-variance model in log returns:
 
 $$
-\begin{aligned}
-r_t &= \mu + \sigma_t Z_t,\quad Z_t \sim \mathcal{N}(0,1) \\
-\sigma_t^2 &= \omega + \alpha\varepsilon_{t-1}^2 + \beta\sigma_{t-1}^2 \\
-\varepsilon_{t-1} &= r_{t-1} - \mu
-\end{aligned}
+\\begin{aligned}
+r_t &= \\mu + \\sigma_t Z_t,\\quad Z_t \\sim \\mathcal{N}(0,1) \\
+\\sigma_t^2 &= \\omega + \\alpha\\varepsilon\_{t-1}^2 + \\beta\\sigma\_{t-1}^2 \\
+\\varepsilon\_{t-1} &= r\_{t-1} - \\mu
+\\end{aligned}
 $$
 
 When `alpha + beta < 1`, the initial variance is the unconditional
@@ -147,26 +164,26 @@ variance `omega / (1 - alpha - beta)`. Otherwise it falls back to
 
 #### GARCH Parameters
 
-| Param | Default | Meaning |
-| --- | --- | --- |
-| `s0` | `100.0` | initial price > 0 |
-| `mu` | `0.0` | mean log return |
-| `omega` | `1e-6` | constant variance term >= 0 |
-| `alpha` | `0.05` | shock weight >= 0 |
-| `beta` | `0.90` | persistence weight >= 0 |
-| `n_steps` | `252` | number of return draws |
+| Param     | Default | Meaning                     |
+| --------- | ------- | --------------------------- |
+| `s0`      | `100.0` | initial price > 0           |
+| `mu`      | `0.0`   | mean log return             |
+| `omega`   | `1e-6`  | constant variance term >= 0 |
+| `alpha`   | `0.05`  | shock weight >= 0           |
+| `beta`    | `0.90`  | persistence weight >= 0     |
+| `n_steps` | `252`   | number of return draws      |
 
 #### GARCH Schema
 
-| Column | Type | Notes |
-| --- | --- | --- |
-| `timestamp` | `Timestamp(ms, UTC)` | uniform grid |
-| `symbol` | `Utf8` | constant |
-| `price` | `Float64` | updated with `S_t = S_{t-1} exp(r_t)` |
-| `return` | `Float64` | first row is `0.0` |
-| `sigma` | `Float64` | conditional volatility, strictly positive |
+| Column      | Type                 | Notes                                     |
+| ----------- | -------------------- | ----------------------------------------- |
+| `timestamp` | `Timestamp(ms, UTC)` | uniform grid                              |
+| `symbol`    | `Utf8`               | constant                                  |
+| `price`     | `Float64`            | updated with `S_t = S_{t-1} exp(r_t)`     |
+| `return`    | `Float64`            | first row is `0.0`                        |
+| `sigma`     | `Float64`            | conditional volatility, strictly positive |
 
----
+______________________________________________________________________
 
 ### OHLCV Synthesis From Close
 
@@ -188,30 +205,30 @@ This guarantees `high >= max(open, close)` and
 
 #### OHLCV Parameters
 
-| Param | Default | Meaning |
-| --- | --- | --- |
-| `close` | required | iterable, numpy array, or `pl.Series` of floats |
-| `intrabar_vol` | `0.005` | per-bar high/low envelope width |
-| `base_volume` | `1_000_000` | floor volume |
-| `vol_factor` | `5e7` | volume sensitivity to absolute log return |
-| `symbol` | `"SYM"` | symbol label |
-| `start_ms` | `0` | first timestamp, epoch ms UTC |
-| `step_ms` | `86_400_000` | timestamp spacing |
-| `seed` | `None` | RNG seed |
+| Param          | Default      | Meaning                                         |
+| -------------- | ------------ | ----------------------------------------------- |
+| `close`        | required     | iterable, numpy array, or `pl.Series` of floats |
+| `intrabar_vol` | `0.005`      | per-bar high/low envelope width                 |
+| `base_volume`  | `1_000_000`  | floor volume                                    |
+| `vol_factor`   | `5e7`        | volume sensitivity to absolute log return       |
+| `symbol`       | `"SYM"`      | symbol label                                    |
+| `start_ms`     | `0`          | first timestamp, epoch ms UTC                   |
+| `step_ms`      | `86_400_000` | timestamp spacing                               |
+| `seed`         | `None`       | RNG seed                                        |
 
 #### OHLCV Schema
 
-| Column | Type |
-| --- | --- |
+| Column      | Type                 |
+| ----------- | -------------------- |
 | `timestamp` | `Timestamp(ms, UTC)` |
-| `symbol` | `Utf8` |
-| `open` | `Float64` |
-| `high` | `Float64` |
-| `low` | `Float64` |
-| `close` | `Float64` |
-| `volume` | `Float64` |
+| `symbol`    | `Utf8`               |
+| `open`      | `Float64`            |
+| `high`      | `Float64`            |
+| `low`       | `Float64`            |
+| `close`     | `Float64`            |
+| `volume`    | `Float64`            |
 
----
+______________________________________________________________________
 
 ## Cross-Sectional Panels
 
@@ -228,18 +245,18 @@ that the cross-sectional Pearson IC of `signal` against `fwd_returns`
 is approximately `ic` per date:
 
 $$
-\mathrm{signal} = ic \cdot z(\mathrm{fwd}) + \sqrt{1 - ic^2}\,\varepsilon
+\\mathrm{signal} = ic \\cdot z(\\mathrm{fwd}) + \\sqrt{1 - ic^2},\\varepsilon
 $$
 
-| Param | Default | Meaning |
-| --- | --- | --- |
-| `n_dates` | `252` | rows in the date dimension |
-| `n_assets` | `50` | rows in the asset dimension |
-| `ic` | `0.05` | target per-date Pearson IC, in `(-1, 1)` |
-| `return_vol` | `0.02` | cross-sectional standard deviation of fwd returns |
-| `seed` | `None` | numpy RNG seed |
-| `start` | `2020-01-01` | first date |
-| `symbols` | `None` | optional explicit symbol list |
+| Param        | Default      | Meaning                                           |
+| ------------ | ------------ | ------------------------------------------------- |
+| `n_dates`    | `252`        | rows in the date dimension                        |
+| `n_assets`   | `50`         | rows in the asset dimension                       |
+| `ic`         | `0.05`       | target per-date Pearson IC, in `(-1, 1)`          |
+| `return_vol` | `0.02`       | cross-sectional standard deviation of fwd returns |
+| `seed`       | `None`       | numpy RNG seed                                    |
+| `start`      | `2020-01-01` | first date                                        |
+| `symbols`    | `None`       | optional explicit symbol list                     |
 
 Output schema: `date`, `symbol`, `signal`, `fwd_returns`.
 
@@ -251,12 +268,12 @@ Wide-form Barra-style factor loadings, one row per asset. The `market`
 factor is set to 1.0 when present. Other factors are drawn from a
 standard normal distribution and standardized cross-sectionally.
 
-| Param | Default | Meaning |
-| --- | --- | --- |
-| `n_assets` | `50` | row count |
-| `factors` | `("market", "value", "momentum", "size", "quality")` | factor columns |
-| `seed` | `None` | numpy RNG seed |
-| `symbols` | `None` | optional explicit symbol list |
+| Param      | Default                                              | Meaning                       |
+| ---------- | ---------------------------------------------------- | ----------------------------- |
+| `n_assets` | `50`                                                 | row count                     |
+| `factors`  | `("market", "value", "momentum", "size", "quality")` | factor columns                |
+| `seed`     | `None`                                               | numpy RNG seed                |
+| `symbols`  | `None`                                               | optional explicit symbol list |
 
 Output schema: `symbol` plus one numeric column per factor.
 
@@ -267,20 +284,20 @@ Convenience wrapper: `generate_factor_loadings(...)`.
 Independent Gaussian benchmark return series with target annualized mean
 and volatility.
 
-| Param | Default | Meaning |
-| --- | --- | --- |
-| `n_dates` | `252` | row count |
-| `annual_return` | `0.08` | target annualized mean |
-| `annual_vol` | `0.16` | target annualized volatility |
-| `periods_per_year` | `252` | annualization factor |
-| `seed` | `None` | numpy RNG seed |
-| `start` | `2020-01-01` | first date |
+| Param              | Default      | Meaning                      |
+| ------------------ | ------------ | ---------------------------- |
+| `n_dates`          | `252`        | row count                    |
+| `annual_return`    | `0.08`       | target annualized mean       |
+| `annual_vol`       | `0.16`       | target annualized volatility |
+| `periods_per_year` | `252`        | annualization factor         |
+| `seed`             | `None`       | numpy RNG seed               |
+| `start`            | `2020-01-01` | first date                   |
 
 Output schema: `date`, `benchmark`.
 
 Convenience wrapper: `generate_benchmark(...)`.
 
----
+______________________________________________________________________
 
 ## Portfolio and Transaction Generators
 
@@ -293,17 +310,17 @@ Long-form position panel with one row per `(date, symbol)`. Per-date
 absolute weights are normalized to `gross_exposure`; `market_value` is
 `weight * portfolio_value`, and `quantity` is `market_value / price`.
 
-| Param | Default | Meaning |
-| --- | --- | --- |
-| `n_dates` | `252` | number of dates |
-| `n_assets` | `50` | assets per date |
-| `portfolio_value` | `1_000_000.0` | equity denominator for market value |
-| `gross_exposure` | `1.0` | per-date sum of absolute weights |
-| `average_price` | `100.0` | center of synthetic price distribution |
-| `price_vol` | `0.02` | daily log-return volatility for marks |
-| `seed` | `None` | numpy RNG seed |
-| `start` | `2020-01-01` | first date |
-| `symbols` | `None` | optional explicit symbol list |
+| Param             | Default       | Meaning                                |
+| ----------------- | ------------- | -------------------------------------- |
+| `n_dates`         | `252`         | number of dates                        |
+| `n_assets`        | `50`          | assets per date                        |
+| `portfolio_value` | `1_000_000.0` | equity denominator for market value    |
+| `gross_exposure`  | `1.0`         | per-date sum of absolute weights       |
+| `average_price`   | `100.0`       | center of synthetic price distribution |
+| `price_vol`       | `0.02`        | daily log-return volatility for marks  |
+| `seed`            | `None`        | numpy RNG seed                         |
+| `start`           | `2020-01-01`  | first date                             |
+| `symbols`         | `None`        | optional explicit symbol list          |
 
 Output schema: `date`, `symbol`, `price`, `quantity`, `market_value`,
 `weight`.
@@ -318,27 +335,75 @@ negative for `Sell`; opening and closing intent is represented by
 `position_effect`. `notional` is `abs(amount) * price`; `fees` are
 computed from `fee_bps`.
 
-| Param | Default | Meaning |
-| --- | --- | --- |
-| `n_dates` | `252` | number of trade dates |
-| `n_assets` | `50` | symbol universe size |
-| `trades_per_day` | `25` | rows per date |
-| `average_price` | `100.0` | center of trade-price distribution |
-| `price_vol` | `0.25` | lognormal price dispersion |
-| `max_amount` | `1_000` | max absolute share amount per row |
-| `commission` | `1.0` | explicit commission per trade |
-| `fee_bps` | `0.2` | explicit fee rate in basis points |
-| `bps` | `5.0` | slippage or cost assumption column |
-| `seed` | `None` | numpy RNG seed |
-| `start` | `2020-01-01` | first trade date |
-| `symbols` | `None` | optional explicit symbol list |
+| Param            | Default      | Meaning                            |
+| ---------------- | ------------ | ---------------------------------- |
+| `n_dates`        | `252`        | number of trade dates              |
+| `n_assets`       | `50`         | symbol universe size               |
+| `trades_per_day` | `25`         | rows per date                      |
+| `average_price`  | `100.0`      | center of trade-price distribution |
+| `price_vol`      | `0.25`       | lognormal price dispersion         |
+| `max_amount`     | `1_000`      | max absolute share amount per row  |
+| `commission`     | `1.0`        | explicit commission per trade      |
+| `fee_bps`        | `0.2`        | explicit fee rate in basis points  |
+| `bps`            | `5.0`        | slippage or cost assumption column |
+| `seed`           | `None`       | numpy RNG seed                     |
+| `start`          | `2020-01-01` | first trade date                   |
+| `symbols`        | `None`       | optional explicit symbol list      |
 
 Output schema: `timestamp`, `symbol`, `amount`, `price`, `side`,
 `position_effect`, `notional`, `commission`, `fees`, `bps`.
 
 Convenience wrapper: `generate_transactions(...)`.
 
----
+### `OrdersGenerator`
+
+Enum-backed order fixtures for execution-quality and post-trade tests.
+Generated rows include side, order type, order status, and time-in-force
+labels from `finance-enums`. When `exchange` is supplied, timestamps are
+sampled from that exchange calendar's regular sessions.
+
+| Param            | Default      | Meaning                                      |
+| ---------------- | ------------ | -------------------------------------------- |
+| `n_dates`        | `252`        | number of order dates                        |
+| `n_assets`       | `50`         | symbol universe size                         |
+| `orders_per_day` | `25`         | rows per date                                |
+| `average_price`  | `100.0`      | center of synthetic limit-price distribution |
+| `price_vol`      | `0.2`        | lognormal limit-price dispersion             |
+| `max_quantity`   | `1_000`      | max order quantity per row                   |
+| `seed`           | `None`       | numpy RNG seed                               |
+| `start`          | `2020-01-01` | first order date                             |
+| `symbols`        | `None`       | optional explicit symbol list                |
+
+Output schema: `timestamp`, `symbol`, `order_id`, `side`, `order_type`,
+`quantity`, `limit_price`, `order_status`, `time_in_force`.
+
+Convenience wrapper: `generate_orders(...)`.
+
+### `ExecutionsGenerator`
+
+Enum-backed execution fixtures for simulated fills. Generated rows have
+execution IDs, synthetic order IDs, sides, fill prices, fill quantities,
+liquidity flags, and time-in-force labels. When `exchange` is supplied,
+timestamps are sampled from that exchange calendar's regular sessions.
+
+| Param                | Default      | Meaning                                     |
+| -------------------- | ------------ | ------------------------------------------- |
+| `n_dates`            | `252`        | number of execution dates                   |
+| `n_assets`           | `50`         | symbol universe size                        |
+| `executions_per_day` | `30`         | rows per date                               |
+| `average_price`      | `100.0`      | center of synthetic fill-price distribution |
+| `price_vol`          | `0.2`        | lognormal fill-price dispersion             |
+| `max_quantity`       | `1_000`      | max execution quantity per row              |
+| `seed`               | `None`       | numpy RNG seed                              |
+| `start`              | `2020-01-01` | first execution date                        |
+| `symbols`            | `None`       | optional explicit symbol list               |
+
+Output schema: `timestamp`, `execution_id`, `order_id`, `symbol`,
+`side`, `price`, `quantity`, `liquidity_flag`, `time_in_force`.
+
+Convenience wrapper: `generate_executions(...)`.
+
+______________________________________________________________________
 
 ## Multi-Asset, Regime, and Market-Impact Generators
 
@@ -375,7 +440,7 @@ Output schema: `symbol`, `participation_rate`, `adv`, `volatility`,
 
 Convenience wrapper: `generate_market_impact_curve(...)`.
 
----
+______________________________________________________________________
 
 ## Risk-Model Generators
 
@@ -385,11 +450,11 @@ Creates a synthetic asset-return matrix from latent factors, then fits a
 PCA-style statistical risk model. `.generate()` returns a dictionary
 with three polars frames:
 
-| Key | Schema |
-| --- | --- |
-| `factor_loadings` | `symbol`, `factor_1`, ..., `factor_n` |
-| `factor_returns` | `date`, `factor_1`, ..., `factor_n` |
-| `specific_variance` | `symbol`, `specific_variance` |
+| Key                 | Schema                                |
+| ------------------- | ------------------------------------- |
+| `factor_loadings`   | `symbol`, `factor_1`, ..., `factor_n` |
+| `factor_returns`    | `date`, `factor_1`, ..., `factor_n`   |
+| `specific_variance` | `symbol`, `specific_variance`         |
 
 Convenience wrapper: `generate_statistical_risk_model(...)`.
 
@@ -419,7 +484,7 @@ dispersion around `target_vol ** 2`.
 
 Convenience wrapper: `generate_specific_variance(...)`.
 
----
+______________________________________________________________________
 
 ## Reproducibility
 
@@ -440,7 +505,7 @@ assert a.equals(b)
 If `seed` is omitted, the generator seeds from OS entropy and the path
 will differ on every call.
 
----
+______________________________________________________________________
 
 ## Why Arrow?
 

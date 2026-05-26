@@ -24,6 +24,8 @@ from finance_datagen import (
     # Python portfolio, market, and risk-model generators
     PositionsGenerator,
     TransactionsGenerator,
+    OrdersGenerator,
+    ExecutionsGenerator,
     MultiAssetGBMGenerator,
     RegimeSwitchingGenerator,
     MarketImpactCurveGenerator,
@@ -33,6 +35,8 @@ from finance_datagen import (
     SpecificVarianceGenerator,
     generate_positions,
     generate_transactions,
+    generate_orders,
+    generate_executions,
     generate_multi_asset_gbm,
     generate_regime_switching,
     generate_market_impact_curve,
@@ -142,6 +146,16 @@ ______________________________________________________________________
     :special-members: __init__
     :show-inheritance:
 
+.. autoclass:: OrdersGenerator
+    :members:
+    :special-members: __init__
+    :show-inheritance:
+
+.. autoclass:: ExecutionsGenerator
+    :members:
+    :special-members: __init__
+    :show-inheritance:
+
 .. autoclass:: MultiAssetGBMGenerator
     :members:
     :special-members: __init__
@@ -181,6 +195,10 @@ ______________________________________________________________________
 
 .. autofunction:: generate_transactions
 
+.. autofunction:: generate_orders
+
+.. autofunction:: generate_executions
+
 .. autofunction:: generate_multi_asset_gbm
 
 .. autofunction:: generate_regime_switching
@@ -199,14 +217,27 @@ ______________________________________________________________________
 ### Post-trade fixtures
 
 ```python
-from finance_datagen import PositionsGenerator, TransactionsGenerator
+from finance_datagen import (
+    ExecutionsGenerator,
+    OrdersGenerator,
+    PositionsGenerator,
+    TransactionsGenerator,
+    generate_executions,
+    generate_orders,
+    generate_positions,
+    generate_transactions,
+)
 
 positions = PositionsGenerator(n_dates=20, n_assets=50, seed=0).generate()
 transactions = TransactionsGenerator(n_dates=20, n_assets=50, seed=0).generate()
+orders = OrdersGenerator(n_dates=20, n_assets=50, seed=0).generate()
+executions = ExecutionsGenerator(n_dates=20, n_assets=50, seed=0).generate()
 
 # Equivalent convenience wrappers are available:
 positions = generate_positions(n_dates=20, n_assets=50, seed=0)
 transactions = generate_transactions(n_dates=20, n_assets=50, seed=0)
+orders = generate_orders(n_dates=20, n_assets=50, seed=0)
+executions = generate_executions(n_dates=20, n_assets=50, seed=0)
 ```
 
 ### Risk-model fixtures

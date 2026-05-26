@@ -79,3 +79,23 @@ def test_pipeline_gbm_to_ohlc():
     gbm = GBMGenerator(seed=11, n_steps=50).generate()
     ohlcv = ohlc_from_close(gbm["price"], seed=11, symbol="GBM")
     assert ohlcv.height == gbm.height
+
+
+def test_single_asset_generators_optional_metadata_columns():
+    gbm = GBMGenerator(
+        seed=1,
+        n_steps=4,
+        currency="USD",
+        exchange="XNYS",
+        include_region=True,
+        instrument_type="Spot",
+        market_type="Equities",
+        venue_type="Exchange",
+    ).generate()
+    heston = HestonGenerator(seed=2, n_steps=4, currency="USD", instrument_type="Spot", market_type="Equities", venue_type="Exchange").generate()
+    garch = GARCHGenerator(seed=3, n_steps=4, exchange="XNYS", include_region=True, market_type="Equities", venue_type="Exchange").generate()
+
+    assert {"currency", "exchange", "region", "instrument_type", "market_type", "venue_type"} <= set(gbm.columns)
+    assert {"currency", "instrument_type", "market_type", "venue_type"} <= set(heston.columns)
+    assert {"exchange", "region", "market_type", "venue_type"} <= set(garch.columns)
+    assert gbm["region"].n_unique() == 1

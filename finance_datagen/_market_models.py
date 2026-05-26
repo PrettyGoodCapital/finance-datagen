@@ -7,6 +7,7 @@ from typing import Annotated, Sequence
 
 import numpy as np
 import polars as pl
+from finance_enums import InstrumentType, MarketType, VenueType
 from pydantic import Field, field_validator, model_validator
 
 from ._base import DataGenerator, NonNegativeFloat, PositiveFloat, PositiveInt
@@ -53,6 +54,9 @@ class MultiAssetGBMGenerator(DataGenerator[pl.DataFrame]):
     start_ms: int = 0
     step_ms: int = 86_400_000
     seed: int | None = None
+    instrument_type: str | None = None
+    market_type: str | None = None
+    venue_type: str | None = None
 
     @field_validator("s0", "mu", "sigma", "corr", mode="before")
     @classmethod
@@ -68,6 +72,12 @@ class MultiAssetGBMGenerator(DataGenerator[pl.DataFrame]):
             raise ValueError("s0 must be positive and sigma must be non-negative")
         self._correlation()
         _symbols(self.n_assets, self.symbols)
+        if self.instrument_type is not None:
+            InstrumentType(self.instrument_type)
+        if self.market_type is not None:
+            MarketType(self.market_type)
+        if self.venue_type is not None:
+            VenueType(self.venue_type)
         return self
 
     def _correlation(self) -> np.ndarray:
@@ -100,7 +110,7 @@ class MultiAssetGBMGenerator(DataGenerator[pl.DataFrame]):
         timestamps = _timestamp_grid(self.n_steps, self.start_ms, self.step_ms)
         timestamp_values = [timestamp for timestamp in timestamps for _ in range(self.n_assets)]
 
-        return pl.DataFrame(
+        frame = pl.DataFrame(
             {
                 "timestamp": pl.Series(timestamp_values).cast(pl.Datetime("ms", "UTC")),
                 "symbol": np.tile(np.array(_symbols(self.n_assets, self.symbols)), self.n_steps + 1),
@@ -108,6 +118,15 @@ class MultiAssetGBMGenerator(DataGenerator[pl.DataFrame]):
                 "return": returns.reshape(-1),
             }
         )
+
+        if self.instrument_type is not None:
+            frame = frame.with_columns(pl.lit(self.instrument_type).alias("instrument_type"))
+        if self.market_type is not None:
+            frame = frame.with_columns(pl.lit(self.market_type).alias("market_type"))
+        if self.venue_type is not None:
+            frame = frame.with_columns(pl.lit(self.venue_type).alias("venue_type"))
+
+        return frame
 
 
 class RegimeSwitchingGenerator(DataGenerator[pl.DataFrame]):
@@ -122,6 +141,9 @@ class RegimeSwitchingGenerator(DataGenerator[pl.DataFrame]):
     start_ms: int = 0
     step_ms: int = 86_400_000
     seed: int | None = None
+    instrument_type: str | None = None
+    market_type: str | None = None
+    venue_type: str | None = None
 
     @field_validator("transition_matrix", "regime_mu", "regime_sigma", mode="before")
     @classmethod
@@ -141,6 +163,12 @@ class RegimeSwitchingGenerator(DataGenerator[pl.DataFrame]):
             raise ValueError("regime_mu and regime_sigma must match transition matrix size")
         if (np.asarray(self.regime_sigma, dtype=float) < 0).any():
             raise ValueError("regime_sigma must be non-negative")
+        if self.instrument_type is not None:
+            InstrumentType(self.instrument_type)
+        if self.market_type is not None:
+            MarketType(self.market_type)
+        if self.venue_type is not None:
+            VenueType(self.venue_type)
         return self
 
     def generate(self) -> pl.DataFrame:
@@ -161,7 +189,7 @@ class RegimeSwitchingGenerator(DataGenerator[pl.DataFrame]):
             returns[step] = rng.normal(regime_mu[regime], regime_sigma[regime])
             prices[step] = prices[step - 1] * np.exp(returns[step])
 
-        return pl.DataFrame(
+        frame = pl.DataFrame(
             {
                 "timestamp": pl.Series(_timestamp_grid(self.n_steps, self.start_ms, self.step_ms)).cast(pl.Datetime("ms", "UTC")),
                 "symbol": [self.symbol] * (self.n_steps + 1),
@@ -170,6 +198,15 @@ class RegimeSwitchingGenerator(DataGenerator[pl.DataFrame]):
                 "regime": regimes,
             }
         )
+
+        if self.instrument_type is not None:
+            frame = frame.with_columns(pl.lit(self.instrument_type).alias("instrument_type"))
+        if self.market_type is not None:
+            frame = frame.with_columns(pl.lit(self.market_type).alias("market_type"))
+        if self.venue_type is not None:
+            frame = frame.with_columns(pl.lit(self.venue_type).alias("venue_type"))
+
+        return frame
 
 
 class MarketImpactCurveGenerator(DataGenerator[pl.DataFrame]):
@@ -194,6 +231,8 @@ class MarketImpactCurveGenerator(DataGenerator[pl.DataFrame]):
     temporary_impact_coef: NonNegativeFloat = 0.5
     permanent_impact_coef: NonNegativeFloat = 0.1
     seed: int | None = None
+    market_type: str | None = None
+    venue_type: str | None = None
 
     @model_validator(mode="after")
     def _validate_symbols(self):
@@ -202,6 +241,10 @@ class MarketImpactCurveGenerator(DataGenerator[pl.DataFrame]):
                 raise ValueError("symbols must not be empty")
             if self.n_assets is not None and len(self.symbols) != self.n_assets:
                 raise ValueError(f"symbols length {len(self.symbols)} != n_assets {self.n_assets}")
+        if self.market_type is not None:
+            MarketType(self.market_type)
+        if self.venue_type is not None:
+            VenueType(self.venue_type)
         return self
 
     def _resolved_symbols(self) -> list[str]:
@@ -223,7 +266,7 @@ class MarketImpactCurveGenerator(DataGenerator[pl.DataFrame]):
                 permanent = self.permanent_impact_coef * symbol_vol * rate * 10_000.0
                 rows.append((symbol, rate, symbol_adv, symbol_vol, temporary, permanent, temporary + permanent))
 
-        return pl.DataFrame(
+        frame = pl.DataFrame(
             rows,
             schema=[
                 "symbol",
@@ -236,6 +279,13 @@ class MarketImpactCurveGenerator(DataGenerator[pl.DataFrame]):
             ],
             orient="row",
         )
+
+        if self.market_type is not None:
+            frame = frame.with_columns(pl.lit(self.market_type).alias("market_type"))
+        if self.venue_type is not None:
+            frame = frame.with_columns(pl.lit(self.venue_type).alias("venue_type"))
+
+        return frame
 
 
 def generate_multi_asset_gbm(
@@ -251,6 +301,9 @@ def generate_multi_asset_gbm(
     start_ms: int = 0,
     step_ms: int = 86_400_000,
     seed: int | None = None,
+    instrument_type: str | None = None,
+    market_type: str | None = None,
+    venue_type: str | None = None,
 ) -> pl.DataFrame:
     """Generate correlated multi-asset GBM paths in long form."""
     return MultiAssetGBMGenerator(
@@ -266,6 +319,9 @@ def generate_multi_asset_gbm(
         start_ms=start_ms,
         step_ms=step_ms,
         seed=seed,
+        instrument_type=instrument_type,
+        market_type=market_type,
+        venue_type=venue_type,
     ).generate()
 
 
@@ -279,6 +335,9 @@ def generate_regime_switching(
     start_ms: int = 0,
     step_ms: int = 86_400_000,
     seed: int | None = None,
+    instrument_type: str | None = None,
+    market_type: str | None = None,
+    venue_type: str | None = None,
 ) -> pl.DataFrame:
     """Generate a single price path with Markov switching return regimes."""
     return RegimeSwitchingGenerator(
@@ -291,6 +350,9 @@ def generate_regime_switching(
         start_ms=start_ms,
         step_ms=step_ms,
         seed=seed,
+        instrument_type=instrument_type,
+        market_type=market_type,
+        venue_type=venue_type,
     ).generate()
 
 
@@ -314,6 +376,8 @@ def generate_market_impact_curve(
     temporary_impact_coef: float = 0.5,
     permanent_impact_coef: float = 0.1,
     seed: int | None = None,
+    market_type: str | None = None,
+    venue_type: str | None = None,
 ) -> pl.DataFrame:
     """Generate market-impact curves by participation rate."""
     return MarketImpactCurveGenerator(
@@ -325,4 +389,6 @@ def generate_market_impact_curve(
         temporary_impact_coef=temporary_impact_coef,
         permanent_impact_coef=permanent_impact_coef,
         seed=seed,
+        market_type=market_type,
+        venue_type=venue_type,
     ).generate()
