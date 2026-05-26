@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>finance_datagen._market_models - finance datagen v0.1.1</title>
+        <title>finance_datagen._market_models - finance datagen v0.2.0</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -166,7 +166,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.1.1</code></div></a>
+      <a href="../../index.html"><div class="brand">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.2.0</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -187,7 +187,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
-  <span class="sidebar-brand-text">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.1.1</code></span>
+  <span class="sidebar-brand-text">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.2.0</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -240,6 +240,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_enums</span><span class="w"> </span><span class="kn">import</span> <span class="n">InstrumentType</span><span class="p">,</span> <span class="n">MarketType</span><span class="p">,</span> <span class="n">VenueType</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">model_validator</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._base</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataGenerator</span><span class="p">,</span> <span class="n">NonNegativeFloat</span><span class="p">,</span> <span class="n">PositiveFloat</span><span class="p">,</span> <span class="n">PositiveInt</span>
@@ -288,6 +289,9 @@
     <span class="n">start_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">step_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">86_400_000</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">instrument_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">market_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">venue_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;s0&quot;</span><span class="p">,</span> <span class="s2">&quot;mu&quot;</span><span class="p">,</span> <span class="s2">&quot;sigma&quot;</span><span class="p">,</span> <span class="s2">&quot;corr&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
@@ -303,6 +307,12 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;s0 must be positive and sigma must be non-negative&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_correlation</span><span class="p">()</span>
         <span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">instrument_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">InstrumentType</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">instrument_type</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">MarketType</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market_type</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">venue_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">VenueType</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">venue_type</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_correlation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -337,14 +347,23 @@
         <span class="n">timestamps</span> <span class="o">=</span> <span class="n">_timestamp_grid</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_ms</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_ms</span><span class="p">)</span>
         <span class="n">timestamp_values</span> <span class="o">=</span> <span class="p">[</span><span class="n">timestamp</span> <span class="k">for</span> <span class="n">timestamp</span> <span class="ow">in</span> <span class="n">timestamps</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">)]</span>
 
-        <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
             <span class="p">{</span>
                 <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">timestamp_values</span><span class="p">)</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">Datetime</span><span class="p">(</span><span class="s2">&quot;ms&quot;</span><span class="p">,</span> <span class="s2">&quot;UTC&quot;</span><span class="p">)),</span>
                 <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)),</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
                 <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="n">prices</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
                 <span class="s2">&quot;return&quot;</span><span class="p">:</span> <span class="n">returns</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
             <span class="p">}</span>
-        <span class="p">)</span></div>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">instrument_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">instrument_type</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;instrument_type&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market_type</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;market_type&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">venue_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">venue_type</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;venue_type&quot;</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">frame</span></div>
 </div>
 
 
@@ -363,6 +382,9 @@
     <span class="n">start_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">step_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">86_400_000</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">instrument_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">market_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">venue_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;transition_matrix&quot;</span><span class="p">,</span> <span class="s2">&quot;regime_mu&quot;</span><span class="p">,</span> <span class="s2">&quot;regime_sigma&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
@@ -382,6 +404,12 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;regime_mu and regime_sigma must match transition matrix size&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">regime_sigma</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;regime_sigma must be non-negative&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">instrument_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">InstrumentType</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">instrument_type</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">MarketType</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market_type</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">venue_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">VenueType</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">venue_type</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
 <div class="viewcode-block" id="RegimeSwitchingGenerator.generate">
@@ -404,7 +432,7 @@
             <span class="n">returns</span><span class="p">[</span><span class="n">step</span><span class="p">]</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">regime_mu</span><span class="p">[</span><span class="n">regime</span><span class="p">],</span> <span class="n">regime_sigma</span><span class="p">[</span><span class="n">regime</span><span class="p">])</span>
             <span class="n">prices</span><span class="p">[</span><span class="n">step</span><span class="p">]</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[</span><span class="n">step</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">returns</span><span class="p">[</span><span class="n">step</span><span class="p">])</span>
 
-        <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
             <span class="p">{</span>
                 <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">_timestamp_grid</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_ms</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_ms</span><span class="p">))</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">Datetime</span><span class="p">(</span><span class="s2">&quot;ms&quot;</span><span class="p">,</span> <span class="s2">&quot;UTC&quot;</span><span class="p">)),</span>
                 <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">symbol</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
@@ -412,7 +440,16 @@
                 <span class="s2">&quot;return&quot;</span><span class="p">:</span> <span class="n">returns</span><span class="p">,</span>
                 <span class="s2">&quot;regime&quot;</span><span class="p">:</span> <span class="n">regimes</span><span class="p">,</span>
             <span class="p">}</span>
-        <span class="p">)</span></div>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">instrument_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">instrument_type</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;instrument_type&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market_type</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;market_type&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">venue_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">venue_type</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;venue_type&quot;</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">frame</span></div>
 </div>
 
 
@@ -441,6 +478,8 @@
     <span class="n">temporary_impact_coef</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">0.5</span>
     <span class="n">permanent_impact_coef</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">0.1</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">market_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">venue_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_validate_symbols</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -449,6 +488,10 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;symbols must not be empty&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;symbols length </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span><span class="si">}</span><span class="s2"> != n_assets </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">MarketType</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market_type</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">venue_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">VenueType</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">venue_type</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_resolved_symbols</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
@@ -472,7 +515,7 @@
                 <span class="n">permanent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">permanent_impact_coef</span> <span class="o">*</span> <span class="n">symbol_vol</span> <span class="o">*</span> <span class="n">rate</span> <span class="o">*</span> <span class="mf">10_000.0</span>
                 <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">symbol</span><span class="p">,</span> <span class="n">rate</span><span class="p">,</span> <span class="n">symbol_adv</span><span class="p">,</span> <span class="n">symbol_vol</span><span class="p">,</span> <span class="n">temporary</span><span class="p">,</span> <span class="n">permanent</span><span class="p">,</span> <span class="n">temporary</span> <span class="o">+</span> <span class="n">permanent</span><span class="p">))</span>
 
-        <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
             <span class="n">rows</span><span class="p">,</span>
             <span class="n">schema</span><span class="o">=</span><span class="p">[</span>
                 <span class="s2">&quot;symbol&quot;</span><span class="p">,</span>
@@ -484,7 +527,14 @@
                 <span class="s2">&quot;total_impact_bps&quot;</span><span class="p">,</span>
             <span class="p">],</span>
             <span class="n">orient</span><span class="o">=</span><span class="s2">&quot;row&quot;</span><span class="p">,</span>
-        <span class="p">)</span></div>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market_type</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;market_type&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">venue_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">venue_type</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;venue_type&quot;</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">frame</span></div>
 </div>
 
 
@@ -504,6 +554,9 @@
     <span class="n">start_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="n">step_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">86_400_000</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">instrument_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">market_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">venue_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate correlated multi-asset GBM paths in long form.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">MultiAssetGBMGenerator</span><span class="p">(</span>
@@ -519,6 +572,9 @@
         <span class="n">start_ms</span><span class="o">=</span><span class="n">start_ms</span><span class="p">,</span>
         <span class="n">step_ms</span><span class="o">=</span><span class="n">step_ms</span><span class="p">,</span>
         <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+        <span class="n">instrument_type</span><span class="o">=</span><span class="n">instrument_type</span><span class="p">,</span>
+        <span class="n">market_type</span><span class="o">=</span><span class="n">market_type</span><span class="p">,</span>
+        <span class="n">venue_type</span><span class="o">=</span><span class="n">venue_type</span><span class="p">,</span>
     <span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span></div>
 
 
@@ -535,6 +591,9 @@
     <span class="n">start_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="n">step_ms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">86_400_000</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">instrument_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">market_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">venue_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a single price path with Markov switching return regimes.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">RegimeSwitchingGenerator</span><span class="p">(</span>
@@ -547,6 +606,9 @@
         <span class="n">start_ms</span><span class="o">=</span><span class="n">start_ms</span><span class="p">,</span>
         <span class="n">step_ms</span><span class="o">=</span><span class="n">step_ms</span><span class="p">,</span>
         <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+        <span class="n">instrument_type</span><span class="o">=</span><span class="n">instrument_type</span><span class="p">,</span>
+        <span class="n">market_type</span><span class="o">=</span><span class="n">market_type</span><span class="p">,</span>
+        <span class="n">venue_type</span><span class="o">=</span><span class="n">venue_type</span><span class="p">,</span>
     <span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span></div>
 
 
@@ -573,6 +635,8 @@
     <span class="n">temporary_impact_coef</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
     <span class="n">permanent_impact_coef</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">market_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">venue_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate market-impact curves by participation rate.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">MarketImpactCurveGenerator</span><span class="p">(</span>
@@ -584,6 +648,8 @@
         <span class="n">temporary_impact_coef</span><span class="o">=</span><span class="n">temporary_impact_coef</span><span class="p">,</span>
         <span class="n">permanent_impact_coef</span><span class="o">=</span><span class="n">permanent_impact_coef</span><span class="p">,</span>
         <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+        <span class="n">market_type</span><span class="o">=</span><span class="n">market_type</span><span class="p">,</span>
+        <span class="n">venue_type</span><span class="o">=</span><span class="n">venue_type</span><span class="p">,</span>
     <span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span></div>
 
 </pre></div>
@@ -618,7 +684,7 @@
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=a58bc63e"></script>
+</div><script src="../../_static/documentation_options.js?v=938c9ccc"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>

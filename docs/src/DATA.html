@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="API" href="API.html"><link rel="prev" title="finance datagen" href="../../index.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>Data - finance datagen v0.1.1</title>
+        <title>Data - finance datagen v0.2.0</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -167,7 +167,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.1.1</code></div></a>
+      <a href="../../index.html"><div class="brand">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.2.0</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -188,7 +188,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
-  <span class="sidebar-brand-text">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.1.1</code></span>
+  <span class="sidebar-brand-text">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.2.0</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -285,10 +285,42 @@ and output schemas.</p>
 </div>
 <p>Most generators also have a matching <code class="docutils literal notranslate"><span class="pre">generate_*</span></code> convenience function
 that instantiates the model for validation and returns <code class="docutils literal notranslate"><span class="pre">.generate()</span></code>.</p>
+<section id="enum-backed-metadata">
+<h3>Enum-backed metadata<a class="headerlink" href="#enum-backed-metadata" title="Link to this heading">¶</a></h3>
+<p>Generators that emit tradeable assets can add optional enum-backed
+metadata columns without changing their primary schema:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Family</p></th>
+<th class="head"><p>Optional fields</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GBMGenerator</span></code>, <code class="docutils literal notranslate"><span class="pre">HestonGenerator</span></code>, <code class="docutils literal notranslate"><span class="pre">GARCHGenerator</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">currency</span></code>, <code class="docutils literal notranslate"><span class="pre">exchange</span></code>, <code class="docutils literal notranslate"><span class="pre">include_region</span></code>, <code class="docutils literal notranslate"><span class="pre">instrument_type</span></code>, <code class="docutils literal notranslate"><span class="pre">market_type</span></code>, <code class="docutils literal notranslate"><span class="pre">venue_type</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MultiAssetGBMGenerator</span></code>, <code class="docutils literal notranslate"><span class="pre">RegimeSwitchingGenerator</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">instrument_type</span></code>, <code class="docutils literal notranslate"><span class="pre">market_type</span></code>, <code class="docutils literal notranslate"><span class="pre">venue_type</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MarketImpactCurveGenerator</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">market_type</span></code>, <code class="docutils literal notranslate"><span class="pre">venue_type</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PositionsGenerator</span></code>, <code class="docutils literal notranslate"><span class="pre">TransactionsGenerator</span></code>, <code class="docutils literal notranslate"><span class="pre">OrdersGenerator</span></code>, <code class="docutils literal notranslate"><span class="pre">ExecutionsGenerator</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">currency</span></code>, <code class="docutils literal notranslate"><span class="pre">exchange</span></code>, <code class="docutils literal notranslate"><span class="pre">include_region</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Metadata values are validated by <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code>. When an exchange is
+provided to the portfolio, transaction, order, or execution generators,
+dates and timestamps are drawn from the matching <code class="docutils literal notranslate"><span class="pre">finance-dates</span></code>
+exchange calendar.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">dt</span></code> parameter controls the modeling time step used in SDE
 discretization; <code class="docutils literal notranslate"><span class="pre">step_ms</span></code> controls only the timestamp column. They are
 independent: a daily model (<code class="docutils literal notranslate"><span class="pre">dt</span> <span class="pre">=</span> <span class="pre">1/252</span></code>) can be emitted on a second or
 minute timestamp grid for testing.</p>
+</section>
 </section>
 <hr class="docutils" />
 <section id="models">
@@ -298,17 +330,17 @@ minute timestamp grid for testing.</p>
 <p>The classic Black-Scholes log-normal price process.</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
-\[
-dS_t = \mu S_t \, dt + \sigma S_t \, dW_t
-\]</div>
+\[\begin{split}
+dS_t = \\mu S_t , dt + \\sigma S_t , dW_t
+\end{split}\]</div>
 </div>
 <p>Discretized exactly in log-space:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
-\[
-S_{t+1} = S_t \exp\!\Big( (\mu - \tfrac{1}{2}\sigma^2)\,dt + \sigma\sqrt{dt}\,Z \Big),
-\quad Z \sim \mathcal{N}(0, 1)
-\]</div>
+\[\begin{split}
+S\_{t+1} = S_t \\exp!\\Big( (\\mu - \\tfrac{1}{2}\\sigma^2),dt + \\sigma\\sqrt{dt},Z \\Big),
+\\quad Z \\sim \\mathcal{N}(0, 1)
+\end{split}\]</div>
 </div>
 <section id="gbm-parameters">
 <h4>GBM Parameters<a class="headerlink" href="#gbm-parameters" title="Link to this heading">¶</a></h4>
@@ -397,11 +429,11 @@ variance shocks:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
 \[\begin{split}
-\begin{aligned}
-dS_t &amp;= \mu S_t\,dt + \sqrt{v_t}\,S_t\,dW_t^{S} \\
-dv_t &amp;= \kappa(\theta - v_t)\,dt + \xi\sqrt{v_t}\,dW_t^{v} \\
-\mathrm{Corr}(dW^S, dW^v) &amp;= \rho
-\end{aligned}
+\\begin{aligned}
+dS_t &amp;= \\mu S_t,dt + \\sqrt{v_t},S_t,dW_t^{S} \\
+dv_t &amp;= \\kappa(\\theta - v_t),dt + \\xi\\sqrt{v_t},dW_t^{v} \\
+\\mathrm{Corr}(dW^S, dW^v) &amp;= \\rho
+\\end{aligned}
 \end{split}\]</div>
 </div>
 <p>The implementation uses full-truncation Euler on variance, then
@@ -409,13 +441,13 @@ log-Euler on price:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
 \[\begin{split}
-\begin{aligned}
-v_{t+1} &amp;= v_t + \kappa(\theta - v_t^+)\,dt + \xi\sqrt{v_t^+\,dt}\,Z_v \\
-S_{t+1} &amp;= S_t \exp\!\Big( (\mu - \tfrac{1}{2}v_t^+)\,dt + \sqrt{v_t^+\,dt}\,Z_S \Big)
-\end{aligned}
+\\begin{aligned}
+v\_{t+1} &amp;= v_t + \\kappa(\\theta - v_t^+),dt + \\xi\\sqrt{v_t^+,dt},Z_v \\
+S\_{t+1} &amp;= S_t \\exp!\\Big( (\\mu - \\tfrac{1}{2}v_t^+),dt + \\sqrt{v_t^+,dt},Z_S \\Big)
+\\end{aligned}
 \end{split}\]</div>
 </div>
-<p>where <span class="math notranslate nohighlight">\(v_t^+ = \max(v_t, 0)\)</span>.</p>
+<p>where <span class="math notranslate nohighlight">\(v_t^+ = \\max(v_t, 0)\)</span>.</p>
 <section id="heston-parameters">
 <h4>Heston Parameters<a class="headerlink" href="#heston-parameters" title="Link to this heading">¶</a></h4>
 <div class="table-wrapper colwidths-auto docutils container">
@@ -506,11 +538,11 @@ S_{t+1} &amp;= S_t \exp\!\Big( (\mu - \tfrac{1}{2}v_t^+)\,dt + \sqrt{v_t^+\,dt}\
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
 \[\begin{split}
-\begin{aligned}
-r_t &amp;= \mu + \sigma_t Z_t,\quad Z_t \sim \mathcal{N}(0,1) \\
-\sigma_t^2 &amp;= \omega + \alpha\varepsilon_{t-1}^2 + \beta\sigma_{t-1}^2 \\
-\varepsilon_{t-1} &amp;= r_{t-1} - \mu
-\end{aligned}
+\\begin{aligned}
+r_t &amp;= \\mu + \\sigma_t Z_t,\\quad Z_t \\sim \\mathcal{N}(0,1) \\
+\\sigma_t^2 &amp;= \\omega + \\alpha\\varepsilon\_{t-1}^2 + \\beta\\sigma\_{t-1}^2 \\
+\\varepsilon\_{t-1} &amp;= r\_{t-1} - \\mu
+\\end{aligned}
 \end{split}\]</div>
 </div>
 <p>When <code class="docutils literal notranslate"><span class="pre">alpha</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">&lt;</span> <span class="pre">1</span></code>, the initial variance is the unconditional
@@ -705,9 +737,9 @@ that the cross-sectional Pearson IC of <code class="docutils literal notranslate
 is approximately <code class="docutils literal notranslate"><span class="pre">ic</span></code> per date:</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
-\[
-\mathrm{signal} = ic \cdot z(\mathrm{fwd}) + \sqrt{1 - ic^2}\,\varepsilon
-\]</div>
+\[\begin{split}
+\\mathrm{signal} = ic \\cdot z(\\mathrm{fwd}) + \\sqrt{1 - ic^2},\\varepsilon
+\end{split}\]</div>
 </div>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
@@ -965,6 +997,122 @@ computed from <code class="docutils literal notranslate"><span class="pre">fee_b
 <code class="docutils literal notranslate"><span class="pre">position_effect</span></code>, <code class="docutils literal notranslate"><span class="pre">notional</span></code>, <code class="docutils literal notranslate"><span class="pre">commission</span></code>, <code class="docutils literal notranslate"><span class="pre">fees</span></code>, <code class="docutils literal notranslate"><span class="pre">bps</span></code>.</p>
 <p>Convenience wrapper: <code class="docutils literal notranslate"><span class="pre">generate_transactions(...)</span></code>.</p>
 </section>
+<section id="ordersgenerator">
+<h3><code class="docutils literal notranslate"><span class="pre">OrdersGenerator</span></code><a class="headerlink" href="#ordersgenerator" title="Link to this heading">¶</a></h3>
+<p>Enum-backed order fixtures for execution-quality and post-trade tests.
+Generated rows include side, order type, order status, and time-in-force
+labels from <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code>. When <code class="docutils literal notranslate"><span class="pre">exchange</span></code> is supplied, timestamps are
+sampled from that exchange calendar’s regular sessions.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Param</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">n_dates</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">252</span></code></p></td>
+<td><p>number of order dates</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">n_assets</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">50</span></code></p></td>
+<td><p>symbol universe size</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">orders_per_day</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">25</span></code></p></td>
+<td><p>rows per date</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">average_price</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">100.0</span></code></p></td>
+<td><p>center of synthetic limit-price distribution</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">price_vol</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.2</span></code></p></td>
+<td><p>lognormal limit-price dispersion</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">max_quantity</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1_000</span></code></p></td>
+<td><p>max order quantity per row</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>numpy RNG seed</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">start</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">2020-01-01</span></code></p></td>
+<td><p>first order date</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">symbols</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>optional explicit symbol list</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Output schema: <code class="docutils literal notranslate"><span class="pre">timestamp</span></code>, <code class="docutils literal notranslate"><span class="pre">symbol</span></code>, <code class="docutils literal notranslate"><span class="pre">order_id</span></code>, <code class="docutils literal notranslate"><span class="pre">side</span></code>, <code class="docutils literal notranslate"><span class="pre">order_type</span></code>,
+<code class="docutils literal notranslate"><span class="pre">quantity</span></code>, <code class="docutils literal notranslate"><span class="pre">limit_price</span></code>, <code class="docutils literal notranslate"><span class="pre">order_status</span></code>, <code class="docutils literal notranslate"><span class="pre">time_in_force</span></code>.</p>
+<p>Convenience wrapper: <code class="docutils literal notranslate"><span class="pre">generate_orders(...)</span></code>.</p>
+</section>
+<section id="executionsgenerator">
+<h3><code class="docutils literal notranslate"><span class="pre">ExecutionsGenerator</span></code><a class="headerlink" href="#executionsgenerator" title="Link to this heading">¶</a></h3>
+<p>Enum-backed execution fixtures for simulated fills. Generated rows have
+execution IDs, synthetic order IDs, sides, fill prices, fill quantities,
+liquidity flags, and time-in-force labels. When <code class="docutils literal notranslate"><span class="pre">exchange</span></code> is supplied,
+timestamps are sampled from that exchange calendar’s regular sessions.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Param</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">n_dates</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">252</span></code></p></td>
+<td><p>number of execution dates</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">n_assets</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">50</span></code></p></td>
+<td><p>symbol universe size</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">executions_per_day</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">30</span></code></p></td>
+<td><p>rows per date</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">average_price</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">100.0</span></code></p></td>
+<td><p>center of synthetic fill-price distribution</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">price_vol</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.2</span></code></p></td>
+<td><p>lognormal fill-price dispersion</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">max_quantity</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1_000</span></code></p></td>
+<td><p>max execution quantity per row</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>numpy RNG seed</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">start</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">2020-01-01</span></code></p></td>
+<td><p>first execution date</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">symbols</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>optional explicit symbol list</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Output schema: <code class="docutils literal notranslate"><span class="pre">timestamp</span></code>, <code class="docutils literal notranslate"><span class="pre">execution_id</span></code>, <code class="docutils literal notranslate"><span class="pre">order_id</span></code>, <code class="docutils literal notranslate"><span class="pre">symbol</span></code>,
+<code class="docutils literal notranslate"><span class="pre">side</span></code>, <code class="docutils literal notranslate"><span class="pre">price</span></code>, <code class="docutils literal notranslate"><span class="pre">quantity</span></code>, <code class="docutils literal notranslate"><span class="pre">liquidity_flag</span></code>, <code class="docutils literal notranslate"><span class="pre">time_in_force</span></code>.</p>
+<p>Convenience wrapper: <code class="docutils literal notranslate"><span class="pre">generate_executions(...)</span></code>.</p>
+</section>
 </section>
 <hr class="docutils" />
 <section id="multi-asset-regime-and-market-impact-generators">
@@ -1147,7 +1295,10 @@ the same buffers into a <code class="docutils literal notranslate"><span class="
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Data</a><ul>
-<li><a class="reference internal" href="#conventions">Conventions</a></li>
+<li><a class="reference internal" href="#conventions">Conventions</a><ul>
+<li><a class="reference internal" href="#enum-backed-metadata">Enum-backed metadata</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#models">Models</a><ul>
 <li><a class="reference internal" href="#geometric-brownian-motion-gbm">Geometric Brownian Motion (GBM)</a><ul>
 <li><a class="reference internal" href="#gbm-parameters">GBM Parameters</a></li>
@@ -1180,6 +1331,8 @@ the same buffers into a <code class="docutils literal notranslate"><span class="
 <li><a class="reference internal" href="#portfolio-and-transaction-generators">Portfolio and Transaction Generators</a><ul>
 <li><a class="reference internal" href="#positionsgenerator"><code class="docutils literal notranslate"><span class="pre">PositionsGenerator</span></code></a></li>
 <li><a class="reference internal" href="#transactionsgenerator"><code class="docutils literal notranslate"><span class="pre">TransactionsGenerator</span></code></a></li>
+<li><a class="reference internal" href="#ordersgenerator"><code class="docutils literal notranslate"><span class="pre">OrdersGenerator</span></code></a></li>
+<li><a class="reference internal" href="#executionsgenerator"><code class="docutils literal notranslate"><span class="pre">ExecutionsGenerator</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#multi-asset-regime-and-market-impact-generators">Multi-Asset, Regime, and Market-Impact Generators</a><ul>
@@ -1208,7 +1361,7 @@ the same buffers into a <code class="docutils literal notranslate"><span class="
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=a58bc63e"></script>
+</div><script src="../../_static/documentation_options.js?v=938c9ccc"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>

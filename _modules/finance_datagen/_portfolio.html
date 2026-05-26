@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>finance_datagen._portfolio - finance datagen v0.1.1</title>
+        <title>finance_datagen._portfolio - finance datagen v0.2.0</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -166,7 +166,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.1.1</code></div></a>
+      <a href="../../index.html"><div class="brand">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.2.0</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -187,7 +187,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
-  <span class="sidebar-brand-text">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.1.1</code></span>
+  <span class="sidebar-brand-text">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.2.0</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -240,7 +240,17 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">finance_enums</span><span class="w"> </span><span class="kn">import</span> <span class="n">PositionEffect</span><span class="p">,</span> <span class="n">Side</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_enums</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Currency</span><span class="p">,</span>
+    <span class="n">ExchangeCode</span><span class="p">,</span>
+    <span class="n">OrderStatus</span><span class="p">,</span>
+    <span class="n">OrderType</span><span class="p">,</span>
+    <span class="n">PositionEffect</span><span class="p">,</span>
+    <span class="n">Side</span><span class="p">,</span>
+    <span class="n">TimeInForce</span><span class="p">,</span>
+    <span class="n">exchange_record</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">model_validator</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._base</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataGenerator</span><span class="p">,</span> <span class="n">NonNegativeFloat</span><span class="p">,</span> <span class="n">PositiveFloat</span><span class="p">,</span> <span class="n">PositiveInt</span>
@@ -256,6 +266,20 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">_date_range</span><span class="p">(</span><span class="n">n_dates</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">date</span><span class="p">]:</span>
     <span class="n">first</span> <span class="o">=</span> <span class="n">date</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">start</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">start</span>
     <span class="k">return</span> <span class="p">[</span><span class="n">first</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_dates</span><span class="p">)]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_trading_date_range</span><span class="p">(</span><span class="n">n_dates</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">exchange</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">date</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="n">exchange</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_date_range</span><span class="p">(</span><span class="n">n_dates</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
+
+    <span class="n">first</span> <span class="o">=</span> <span class="n">date</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">if</span> <span class="n">start</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">start</span>
+    <span class="n">calendar</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="n">exchange</span><span class="p">)</span>
+    <span class="n">window_end</span> <span class="o">=</span> <span class="n">first</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">n_dates</span> <span class="o">*</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">dates</span> <span class="o">=</span> <span class="n">calendar</span><span class="o">.</span><span class="n">business_days</span><span class="p">(</span><span class="n">first</span><span class="p">,</span> <span class="n">window_end</span><span class="p">)</span>
+    <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">dates</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">n_dates</span><span class="p">:</span>
+        <span class="n">window_end</span> <span class="o">=</span> <span class="n">window_end</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">n_dates</span> <span class="o">*</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="n">calendar</span><span class="o">.</span><span class="n">business_days</span><span class="p">(</span><span class="n">first</span><span class="p">,</span> <span class="n">window_end</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">dates</span><span class="p">[:</span><span class="n">n_dates</span><span class="p">]</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_symbols</span><span class="p">(</span><span class="n">n_assets</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">symbols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
@@ -279,10 +303,17 @@
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">symbols</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">currency</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">exchange</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">include_region</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 
     <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_validate_symbols</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">Currency</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ExchangeCode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
 <div class="viewcode-block" id="PositionsGenerator.generate">
@@ -290,7 +321,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``[date, symbol, price, quantity, market_value, weight]``.&quot;&quot;&quot;</span>
         <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
-        <span class="n">dates</span> <span class="o">=</span> <span class="n">_date_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="n">_trading_date_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span>
         <span class="n">symbols</span> <span class="o">=</span> <span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span>
 
         <span class="n">base_prices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">average_price</span> <span class="o">*</span> <span class="n">rng</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">)</span>
@@ -303,7 +334,7 @@
         <span class="n">market_values</span> <span class="o">=</span> <span class="n">weights</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span>
         <span class="n">quantities</span> <span class="o">=</span> <span class="n">market_values</span> <span class="o">/</span> <span class="n">prices</span>
 
-        <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
             <span class="p">{</span>
                 <span class="s2">&quot;date&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dates</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;datetime64[D]&quot;</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">),</span>
                 <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">symbols</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">),</span>
@@ -312,7 +343,19 @@
                 <span class="s2">&quot;market_value&quot;</span><span class="p">:</span> <span class="n">market_values</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
                 <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="n">weights</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
             <span class="p">}</span>
-        <span class="p">)</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;date&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">Date</span><span class="p">))</span></div>
+        <span class="p">)</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;date&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">Date</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;currency&quot;</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;exchange&quot;</span><span class="p">))</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_region</span><span class="p">:</span>
+                <span class="n">record</span> <span class="o">=</span> <span class="n">exchange_record</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span>
+                <span class="n">region</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">record</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">record</span><span class="o">.</span><span class="n">region</span>
+                <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="n">region</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;region&quot;</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">frame</span></div>
 </div>
 
 
@@ -334,10 +377,17 @@
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">symbols</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">currency</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">exchange</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">include_region</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 
     <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_validate_symbols</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">Currency</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ExchangeCode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
 <div class="viewcode-block" id="TransactionsGenerator.generate">
@@ -345,13 +395,22 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return transaction rows with side labels and explicit costs.&quot;&quot;&quot;</span>
         <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
-        <span class="n">dates</span> <span class="o">=</span> <span class="n">_date_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="n">_trading_date_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span>
         <span class="n">n_rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">trades_per_day</span>
         <span class="n">transaction_intents</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">_TRANSACTION_INTENTS</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">)</span>
         <span class="n">symbols</span> <span class="o">=</span> <span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span>
 
         <span class="n">timestamps</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">calendar</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
         <span class="k">for</span> <span class="n">current_date</span> <span class="ow">in</span> <span class="n">dates</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">calendar</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">sessions</span> <span class="o">=</span> <span class="n">calendar</span><span class="o">.</span><span class="n">sessions</span><span class="p">(</span><span class="n">current_date</span><span class="p">,</span> <span class="n">current_date</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">sessions</span><span class="p">:</span>
+                    <span class="n">session_open</span><span class="p">,</span> <span class="n">session_close</span> <span class="o">=</span> <span class="n">sessions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">span_seconds</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">((</span><span class="n">session_close</span> <span class="o">-</span> <span class="n">session_open</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()))</span>
+                    <span class="n">offsets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">span_seconds</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">trades_per_day</span><span class="p">))</span>
+                    <span class="n">timestamps</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">session_open</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">offset</span><span class="p">))</span> <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">offsets</span><span class="p">)</span>
+                    <span class="k">continue</span>
             <span class="n">base</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">combine</span><span class="p">(</span><span class="n">current_date</span><span class="p">,</span> <span class="n">time</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">30</span><span class="p">),</span> <span class="n">tzinfo</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
             <span class="n">offsets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">+</span> <span class="mi">30</span> <span class="o">*</span> <span class="mi">60</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">trades_per_day</span><span class="p">))</span>
             <span class="n">timestamps</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">base</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">offset</span><span class="p">))</span> <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">offsets</span><span class="p">)</span>
@@ -364,7 +423,7 @@
         <span class="n">prices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">average_price</span> <span class="o">*</span> <span class="n">rng</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">price_vol</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">)</span>
         <span class="n">notional</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">signed_amounts</span><span class="p">)</span> <span class="o">*</span> <span class="n">prices</span>
 
-        <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
             <span class="p">{</span>
                 <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">timestamps</span><span class="p">)</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">Datetime</span><span class="p">(</span><span class="s2">&quot;ms&quot;</span><span class="p">,</span> <span class="s2">&quot;UTC&quot;</span><span class="p">)),</span>
                 <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">symbols</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">),</span>
@@ -377,7 +436,197 @@
                 <span class="s2">&quot;fees&quot;</span><span class="p">:</span> <span class="n">notional</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">fee_bps</span> <span class="o">/</span> <span class="mf">10_000.0</span><span class="p">,</span>
                 <span class="s2">&quot;bps&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_rows</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bps</span><span class="p">),</span>
             <span class="p">}</span>
-        <span class="p">)</span></div>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;currency&quot;</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;exchange&quot;</span><span class="p">))</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_region</span><span class="p">:</span>
+                <span class="n">record</span> <span class="o">=</span> <span class="n">exchange_record</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span>
+                <span class="n">region</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">record</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">record</span><span class="o">.</span><span class="n">region</span>
+                <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="n">region</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;region&quot;</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">frame</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="OrdersGenerator">
+<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.OrdersGenerator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OrdersGenerator</span><span class="p">(</span><span class="n">DataGenerator</span><span class="p">[</span><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate enum-backed synthetic order fixtures.&quot;&quot;&quot;</span>
+
+    <span class="n">n_dates</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">252</span>
+    <span class="n">n_assets</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">50</span>
+    <span class="n">orders_per_day</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">25</span>
+    <span class="n">average_price</span><span class="p">:</span> <span class="n">PositiveFloat</span> <span class="o">=</span> <span class="mf">100.0</span>
+    <span class="n">price_vol</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">0.2</span>
+    <span class="n">max_quantity</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">1_000</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">symbols</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">exchange</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">currency</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">include_region</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_symbols</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ExchangeCode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">Currency</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+<div class="viewcode-block" id="OrdersGenerator.generate">
+<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.OrdersGenerator.generate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``[timestamp, symbol, order_id, side, order_type, quantity, limit_price, order_status, time_in_force]``.&quot;&quot;&quot;</span>
+        <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="n">_trading_date_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span>
+        <span class="n">symbols</span> <span class="o">=</span> <span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span>
+        <span class="n">n_rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">orders_per_day</span>
+
+        <span class="n">calendar</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">timestamps</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">current_date</span> <span class="ow">in</span> <span class="n">dates</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">calendar</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">sessions</span> <span class="o">=</span> <span class="n">calendar</span><span class="o">.</span><span class="n">sessions</span><span class="p">(</span><span class="n">current_date</span><span class="p">,</span> <span class="n">current_date</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">sessions</span><span class="p">:</span>
+                    <span class="n">session_open</span><span class="p">,</span> <span class="n">session_close</span> <span class="o">=</span> <span class="n">sessions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">span_seconds</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">((</span><span class="n">session_close</span> <span class="o">-</span> <span class="n">session_open</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()))</span>
+                    <span class="n">offsets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">span_seconds</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">orders_per_day</span><span class="p">))</span>
+                    <span class="n">timestamps</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">session_open</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">offset</span><span class="p">))</span> <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">offsets</span><span class="p">)</span>
+                    <span class="k">continue</span>
+            <span class="n">base</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">combine</span><span class="p">(</span><span class="n">current_date</span><span class="p">,</span> <span class="n">time</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">30</span><span class="p">),</span> <span class="n">tzinfo</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+            <span class="n">offsets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">+</span> <span class="mi">30</span> <span class="o">*</span> <span class="mi">60</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">orders_per_day</span><span class="p">))</span>
+            <span class="n">timestamps</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">base</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">offset</span><span class="p">))</span> <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">offsets</span><span class="p">)</span>
+
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">timestamps</span><span class="p">)</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">Datetime</span><span class="p">(</span><span class="s2">&quot;ms&quot;</span><span class="p">,</span> <span class="s2">&quot;UTC&quot;</span><span class="p">)),</span>
+                <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">symbols</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">),</span>
+                <span class="s2">&quot;order_id&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;ORD-</span><span class="si">{</span><span class="n">i</span><span class="si">:</span><span class="s2">08d</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_rows</span><span class="p">)],</span>
+                <span class="s2">&quot;side&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">Side</span><span class="o">.</span><span class="n">Buy</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">Side</span><span class="o">.</span><span class="n">Sell</span><span class="o">.</span><span class="n">value</span><span class="p">]),</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">),</span>
+                <span class="s2">&quot;order_type&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">OrderType</span><span class="o">.</span><span class="n">Market</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">OrderType</span><span class="o">.</span><span class="n">Limit</span><span class="o">.</span><span class="n">value</span><span class="p">]),</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.55</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">]),</span>
+                <span class="s2">&quot;quantity&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_quantity</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">),</span>
+                <span class="s2">&quot;limit_price&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">average_price</span> <span class="o">*</span> <span class="n">rng</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">price_vol</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">),</span>
+                <span class="s2">&quot;order_status&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                        <span class="p">[</span>
+                            <span class="n">OrderStatus</span><span class="o">.</span><span class="n">New</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                            <span class="n">OrderStatus</span><span class="o">.</span><span class="n">PartiallyFilled</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                            <span class="n">OrderStatus</span><span class="o">.</span><span class="n">Filled</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                            <span class="n">OrderStatus</span><span class="o">.</span><span class="n">Canceled</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                            <span class="n">OrderStatus</span><span class="o">.</span><span class="n">Rejected</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                        <span class="p">]</span>
+                    <span class="p">),</span>
+                    <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">,</span>
+                    <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.35</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.10</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">],</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;time_in_force&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">TimeInForce</span><span class="o">.</span><span class="n">Day</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">TimeInForce</span><span class="o">.</span><span class="n">GoodTillCanceled</span><span class="o">.</span><span class="n">value</span><span class="p">]),</span>
+                    <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">,</span>
+                    <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.80</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">],</span>
+                <span class="p">),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;currency&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;exchange&quot;</span><span class="p">))</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_region</span><span class="p">:</span>
+                <span class="n">record</span> <span class="o">=</span> <span class="n">exchange_record</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span>
+                <span class="n">region</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">record</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">record</span><span class="o">.</span><span class="n">region</span>
+                <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="n">region</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;region&quot;</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">frame</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ExecutionsGenerator">
+<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.ExecutionsGenerator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ExecutionsGenerator</span><span class="p">(</span><span class="n">DataGenerator</span><span class="p">[</span><span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate synthetic execution fixtures tied to synthetic orders.&quot;&quot;&quot;</span>
+
+    <span class="n">n_dates</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">252</span>
+    <span class="n">n_assets</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">50</span>
+    <span class="n">executions_per_day</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">30</span>
+    <span class="n">average_price</span><span class="p">:</span> <span class="n">PositiveFloat</span> <span class="o">=</span> <span class="mf">100.0</span>
+    <span class="n">price_vol</span><span class="p">:</span> <span class="n">NonNegativeFloat</span> <span class="o">=</span> <span class="mf">0.2</span>
+    <span class="n">max_quantity</span><span class="p">:</span> <span class="n">PositiveInt</span> <span class="o">=</span> <span class="mi">1_000</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">symbols</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">exchange</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">currency</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">include_region</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_symbols</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ExchangeCode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">Currency</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+<div class="viewcode-block" id="ExecutionsGenerator.generate">
+<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.ExecutionsGenerator.generate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``[timestamp, order_id, symbol, side, price, quantity, liquidity_flag]``.&quot;&quot;&quot;</span>
+        <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="n">_trading_date_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span>
+        <span class="n">symbols</span> <span class="o">=</span> <span class="n">_symbols</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_assets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">symbols</span><span class="p">)</span>
+        <span class="n">n_rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_dates</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">executions_per_day</span>
+
+        <span class="n">calendar</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">timestamps</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">current_date</span> <span class="ow">in</span> <span class="n">dates</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">calendar</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">sessions</span> <span class="o">=</span> <span class="n">calendar</span><span class="o">.</span><span class="n">sessions</span><span class="p">(</span><span class="n">current_date</span><span class="p">,</span> <span class="n">current_date</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">sessions</span><span class="p">:</span>
+                    <span class="n">session_open</span><span class="p">,</span> <span class="n">session_close</span> <span class="o">=</span> <span class="n">sessions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">span_seconds</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">((</span><span class="n">session_close</span> <span class="o">-</span> <span class="n">session_open</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()))</span>
+                    <span class="n">offsets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">span_seconds</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">executions_per_day</span><span class="p">))</span>
+                    <span class="n">timestamps</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">session_open</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">offset</span><span class="p">))</span> <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">offsets</span><span class="p">)</span>
+                    <span class="k">continue</span>
+            <span class="n">base</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">combine</span><span class="p">(</span><span class="n">current_date</span><span class="p">,</span> <span class="n">time</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mi">30</span><span class="p">),</span> <span class="n">tzinfo</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+            <span class="n">offsets</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">+</span> <span class="mi">30</span> <span class="o">*</span> <span class="mi">60</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">executions_per_day</span><span class="p">))</span>
+            <span class="n">timestamps</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">base</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">offset</span><span class="p">))</span> <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">offsets</span><span class="p">)</span>
+
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">timestamps</span><span class="p">)</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">Datetime</span><span class="p">(</span><span class="s2">&quot;ms&quot;</span><span class="p">,</span> <span class="s2">&quot;UTC&quot;</span><span class="p">)),</span>
+                <span class="s2">&quot;execution_id&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;EXE-</span><span class="si">{</span><span class="n">i</span><span class="si">:</span><span class="s2">08d</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_rows</span><span class="p">)],</span>
+                <span class="s2">&quot;order_id&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;ORD-</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">:</span><span class="s2">08d</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_rows</span><span class="p">)],</span>
+                <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">symbols</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">),</span>
+                <span class="s2">&quot;side&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">Side</span><span class="o">.</span><span class="n">Buy</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">Side</span><span class="o">.</span><span class="n">Sell</span><span class="o">.</span><span class="n">value</span><span class="p">]),</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">),</span>
+                <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">average_price</span> <span class="o">*</span> <span class="n">rng</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">price_vol</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">),</span>
+                <span class="s2">&quot;quantity&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_quantity</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">),</span>
+                <span class="s2">&quot;liquidity_flag&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s2">&quot;Added&quot;</span><span class="p">,</span> <span class="s2">&quot;Removed&quot;</span><span class="p">,</span> <span class="s2">&quot;Auction&quot;</span><span class="p">]),</span> <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">]),</span>
+                <span class="s2">&quot;time_in_force&quot;</span><span class="p">:</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">TimeInForce</span><span class="o">.</span><span class="n">Day</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">TimeInForce</span><span class="o">.</span><span class="n">GoodTillCanceled</span><span class="o">.</span><span class="n">value</span><span class="p">]),</span>
+                    <span class="n">size</span><span class="o">=</span><span class="n">n_rows</span><span class="p">,</span>
+                    <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.80</span><span class="p">,</span> <span class="mf">0.20</span><span class="p">],</span>
+                <span class="p">),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">currency</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;currency&quot;</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;exchange&quot;</span><span class="p">))</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_region</span><span class="p">:</span>
+                <span class="n">record</span> <span class="o">=</span> <span class="n">exchange_record</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exchange</span><span class="p">)</span>
+                <span class="n">region</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">record</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">record</span><span class="o">.</span><span class="n">region</span>
+                <span class="n">frame</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">lit</span><span class="p">(</span><span class="n">region</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;region&quot;</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">frame</span></div>
 </div>
 
 
@@ -394,6 +643,9 @@
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">symbols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">currency</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">exchange</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">include_region</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a synthetic positions table.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">PositionsGenerator</span><span class="p">(</span>
@@ -406,6 +658,9 @@
         <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
         <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span>
         <span class="n">symbols</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">symbols</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">symbols</span><span class="p">),</span>
+        <span class="n">currency</span><span class="o">=</span><span class="n">currency</span><span class="p">,</span>
+        <span class="n">exchange</span><span class="o">=</span><span class="n">exchange</span><span class="p">,</span>
+        <span class="n">include_region</span><span class="o">=</span><span class="n">include_region</span><span class="p">,</span>
     <span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span></div>
 
 
@@ -425,6 +680,9 @@
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">symbols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">currency</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">exchange</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">include_region</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a synthetic transaction log.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">TransactionsGenerator</span><span class="p">(</span>
@@ -440,6 +698,77 @@
         <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
         <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span>
         <span class="n">symbols</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">symbols</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">symbols</span><span class="p">),</span>
+        <span class="n">currency</span><span class="o">=</span><span class="n">currency</span><span class="p">,</span>
+        <span class="n">exchange</span><span class="o">=</span><span class="n">exchange</span><span class="p">,</span>
+        <span class="n">include_region</span><span class="o">=</span><span class="n">include_region</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="generate_orders">
+<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.generate_orders">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_orders</span><span class="p">(</span>
+    <span class="n">n_dates</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">252</span><span class="p">,</span>
+    <span class="n">n_assets</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="n">orders_per_day</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">25</span><span class="p">,</span>
+    <span class="n">average_price</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
+    <span class="n">price_vol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span>
+    <span class="n">max_quantity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1_000</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">symbols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">currency</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">exchange</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">include_region</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate synthetic order fixtures.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">OrdersGenerator</span><span class="p">(</span>
+        <span class="n">n_dates</span><span class="o">=</span><span class="n">n_dates</span><span class="p">,</span>
+        <span class="n">n_assets</span><span class="o">=</span><span class="n">n_assets</span><span class="p">,</span>
+        <span class="n">orders_per_day</span><span class="o">=</span><span class="n">orders_per_day</span><span class="p">,</span>
+        <span class="n">average_price</span><span class="o">=</span><span class="n">average_price</span><span class="p">,</span>
+        <span class="n">price_vol</span><span class="o">=</span><span class="n">price_vol</span><span class="p">,</span>
+        <span class="n">max_quantity</span><span class="o">=</span><span class="n">max_quantity</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+        <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span>
+        <span class="n">symbols</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">symbols</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">symbols</span><span class="p">),</span>
+        <span class="n">currency</span><span class="o">=</span><span class="n">currency</span><span class="p">,</span>
+        <span class="n">exchange</span><span class="o">=</span><span class="n">exchange</span><span class="p">,</span>
+        <span class="n">include_region</span><span class="o">=</span><span class="n">include_region</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="generate_executions">
+<a class="viewcode-back" href="../../docs/src/API.html#finance_datagen.generate_executions">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_executions</span><span class="p">(</span>
+    <span class="n">n_dates</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">252</span><span class="p">,</span>
+    <span class="n">n_assets</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="n">executions_per_day</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
+    <span class="n">average_price</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
+    <span class="n">price_vol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span>
+    <span class="n">max_quantity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1_000</span><span class="p">,</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">start</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">symbols</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">currency</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">exchange</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">include_region</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate synthetic execution fixtures.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ExecutionsGenerator</span><span class="p">(</span>
+        <span class="n">n_dates</span><span class="o">=</span><span class="n">n_dates</span><span class="p">,</span>
+        <span class="n">n_assets</span><span class="o">=</span><span class="n">n_assets</span><span class="p">,</span>
+        <span class="n">executions_per_day</span><span class="o">=</span><span class="n">executions_per_day</span><span class="p">,</span>
+        <span class="n">average_price</span><span class="o">=</span><span class="n">average_price</span><span class="p">,</span>
+        <span class="n">price_vol</span><span class="o">=</span><span class="n">price_vol</span><span class="p">,</span>
+        <span class="n">max_quantity</span><span class="o">=</span><span class="n">max_quantity</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+        <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span>
+        <span class="n">symbols</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">symbols</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">symbols</span><span class="p">),</span>
+        <span class="n">currency</span><span class="o">=</span><span class="n">currency</span><span class="p">,</span>
+        <span class="n">exchange</span><span class="o">=</span><span class="n">exchange</span><span class="p">,</span>
+        <span class="n">include_region</span><span class="o">=</span><span class="n">include_region</span><span class="p">,</span>
     <span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span></div>
 
 </pre></div>
@@ -474,7 +803,7 @@
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=a58bc63e"></script>
+</div><script src="../../_static/documentation_options.js?v=938c9ccc"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>

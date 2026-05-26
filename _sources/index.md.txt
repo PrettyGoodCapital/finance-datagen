@@ -62,6 +62,8 @@ Price-path convenience wrappers are also exported as `generate_gbm`,
 | `BenchmarkGenerator`            | `[date, benchmark]` Gaussian benchmark return series                                |
 | `PositionsGenerator`            | Long-form position panel `[date, symbol, price, quantity, market_value, weight]`    |
 | `TransactionsGenerator`         | Transaction log with enum-backed side/position-effect labels and explicit costs     |
+| `OrdersGenerator`               | Enum-backed order fixtures with side, order type, status, and time-in-force         |
+| `ExecutionsGenerator`           | Enum-backed execution fixtures for simulated fills                                  |
 | `MultiAssetGBMGenerator`        | Correlated multi-asset GBM panel `[timestamp, symbol, price, return]`               |
 | `RegimeSwitchingGenerator`      | Markov regime-switching price path `[timestamp, symbol, price, return, regime]`     |
 | `MarketImpactCurveGenerator`    | Participation-rate impact curves with temporary, permanent, and total impact in bps |
@@ -78,14 +80,32 @@ All Rust generators accept an optional `seed: int` for bit-reproducible
 output across platforms (ChaCha8 RNG); the Python generators accept a
 `seed` for `numpy.random.default_rng`.
 
+Portfolio, transaction, order, execution, and market-model generators
+also support enum-backed metadata columns where applicable, including
+`currency`, `exchange`, `region`, `instrument_type`, `market_type`, and
+`venue_type`. Portfolio and transaction generators can use
+`finance-dates.Calendar` exchange calendars so generated dates and
+timestamps align with actual business days and session hours.
+
 ### Quick start
 
 ```python
-from finance_datagen import GBMGenerator, generate_signal, ohlc_from_close
+from finance_datagen import GBMGenerator, OrdersGenerator, generate_signal, ohlc_from_close
 
-closes = GBMGenerator(s0=100.0, mu=0.07, sigma=0.25, seed=0).generate()
+closes = GBMGenerator(
+    s0=100.0,
+    mu=0.07,
+    sigma=0.25,
+    seed=0,
+    currency="USD",
+    exchange="XNYS",
+    instrument_type="Spot",
+    market_type="Equities",
+    venue_type="Exchange",
+).generate()
 bars   = ohlc_from_close(closes["price"], seed=0)
 signal = generate_signal(n_dates=20, n_assets=50, seed=0)
+orders = OrdersGenerator(n_dates=3, n_assets=5, orders_per_day=10, exchange="XNYS", currency="USD", seed=0).generate()
 ```
 
 See the [Data](docs/src/DATA.md) page for model math, parameter ranges,

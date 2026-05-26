@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Data" href="docs/src/DATA.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>finance datagen v0.1.1</title>
+        <title>finance datagen v0.2.0</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -167,7 +167,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="#"><div class="brand">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.1.1</code></div></a>
+      <a href="#"><div class="brand">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.2.0</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -188,7 +188,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="#">
   
-  <span class="sidebar-brand-text">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.1.1</code></span>
+  <span class="sidebar-brand-text">finance datagen <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.2.0</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -320,6 +320,12 @@ and <code class="docutils literal notranslate"><span class="pre">generate_signal
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">TransactionsGenerator</span></code></p></td>
 <td><p>Transaction log with enum-backed side/position-effect labels and explicit costs</p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">OrdersGenerator</span></code></p></td>
+<td><p>Enum-backed order fixtures with side, order type, status, and time-in-force</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ExecutionsGenerator</span></code></p></td>
+<td><p>Enum-backed execution fixtures for simulated fills</p></td>
+</tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MultiAssetGBMGenerator</span></code></p></td>
 <td><p>Correlated multi-asset GBM panel <code class="docutils literal notranslate"><span class="pre">[timestamp,</span> <span class="pre">symbol,</span> <span class="pre">price,</span> <span class="pre">return]</span></code></p></td>
 </tr>
@@ -350,15 +356,32 @@ including the legacy <code class="docutils literal notranslate"><span class="pre
 <p>All Rust generators accept an optional <code class="docutils literal notranslate"><span class="pre">seed:</span> <span class="pre">int</span></code> for bit-reproducible
 output across platforms (ChaCha8 RNG); the Python generators accept a
 <code class="docutils literal notranslate"><span class="pre">seed</span></code> for <code class="docutils literal notranslate"><span class="pre">numpy.random.default_rng</span></code>.</p>
+<p>Portfolio, transaction, order, execution, and market-model generators
+also support enum-backed metadata columns where applicable, including
+<code class="docutils literal notranslate"><span class="pre">currency</span></code>, <code class="docutils literal notranslate"><span class="pre">exchange</span></code>, <code class="docutils literal notranslate"><span class="pre">region</span></code>, <code class="docutils literal notranslate"><span class="pre">instrument_type</span></code>, <code class="docutils literal notranslate"><span class="pre">market_type</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">venue_type</span></code>. Portfolio and transaction generators can use
+<code class="docutils literal notranslate"><span class="pre">finance-dates.Calendar</span></code> exchange calendars so generated dates and
+timestamps align with actual business days and session hours.</p>
 </section>
 </section>
 <section id="quick-start">
 <h3>Quick start<a class="headerlink" href="#quick-start" title="Link to this heading">¶</a></h3>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_datagen</span><span class="w"> </span><span class="kn">import</span> <span class="n">GBMGenerator</span><span class="p">,</span> <span class="n">generate_signal</span><span class="p">,</span> <span class="n">ohlc_from_close</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_datagen</span><span class="w"> </span><span class="kn">import</span> <span class="n">GBMGenerator</span><span class="p">,</span> <span class="n">OrdersGenerator</span><span class="p">,</span> <span class="n">generate_signal</span><span class="p">,</span> <span class="n">ohlc_from_close</span>
 
-<span class="n">closes</span> <span class="o">=</span> <span class="n">GBMGenerator</span><span class="p">(</span><span class="n">s0</span><span class="o">=</span><span class="mf">100.0</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="mf">0.07</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span>
+<span class="n">closes</span> <span class="o">=</span> <span class="n">GBMGenerator</span><span class="p">(</span>
+    <span class="n">s0</span><span class="o">=</span><span class="mf">100.0</span><span class="p">,</span>
+    <span class="n">mu</span><span class="o">=</span><span class="mf">0.07</span><span class="p">,</span>
+    <span class="n">sigma</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USD&quot;</span><span class="p">,</span>
+    <span class="n">exchange</span><span class="o">=</span><span class="s2">&quot;XNYS&quot;</span><span class="p">,</span>
+    <span class="n">instrument_type</span><span class="o">=</span><span class="s2">&quot;Spot&quot;</span><span class="p">,</span>
+    <span class="n">market_type</span><span class="o">=</span><span class="s2">&quot;Equities&quot;</span><span class="p">,</span>
+    <span class="n">venue_type</span><span class="o">=</span><span class="s2">&quot;Exchange&quot;</span><span class="p">,</span>
+<span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span>
 <span class="n">bars</span>   <span class="o">=</span> <span class="n">ohlc_from_close</span><span class="p">(</span><span class="n">closes</span><span class="p">[</span><span class="s2">&quot;price&quot;</span><span class="p">],</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 <span class="n">signal</span> <span class="o">=</span> <span class="n">generate_signal</span><span class="p">(</span><span class="n">n_dates</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">n_assets</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">orders</span> <span class="o">=</span> <span class="n">OrdersGenerator</span><span class="p">(</span><span class="n">n_dates</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">n_assets</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">orders_per_day</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">exchange</span><span class="o">=</span><span class="s2">&quot;XNYS&quot;</span><span class="p">,</span> <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USD&quot;</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span>
 </pre></div>
 </div>
 <p>See the <a class="reference internal" href="docs/src/DATA.html"><span class="std std-doc">Data</span></a> page for model math, parameter ranges,
@@ -422,7 +445,7 @@ linking polars from both Rust and CPython.</p>
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=a58bc63e"></script>
+</div><script src="_static/documentation_options.js?v=938c9ccc"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
