@@ -254,8 +254,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
-name = "finance_datagen"
-version = "0.2.0"
+name = "finance-datagen"
+version = "0.2.1"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -269,11 +269,11 @@ dependencies = [
 
 [[package]]
 name = "finance_datagen_py"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "arrow-array",
  "arrow-schema",
- "finance_datagen",
+ "finance-datagen",
  "pyo3",
  "pyo3-arrow",
 ]

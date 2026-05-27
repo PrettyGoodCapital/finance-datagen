@@ -69,7 +69,7 @@ from .finance_datagen import (
     ohlc_from_close as _rust_ohlc_from_close,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __all__ = [
     "DataGenerator",
@@ -92,6 +92,7 @@ __all__ = [
     "SpecificVarianceGenerator",
     "ohlc_from_close",
     "generate_gbm",
+    "generate_prices",
     "generate_heston",
     "generate_garch",
     "generate_signal",
@@ -313,7 +314,7 @@ def generate_gbm(
     market_type: str | None = None,
     venue_type: str | None = None,
 ) -> _pl.DataFrame:
-    """Generate a GBM price path."""
+    """Generate a synthetic price path using Geometric Brownian Motion."""
     return GBMGenerator(
         s0=s0,
         mu=mu,
@@ -331,6 +332,9 @@ def generate_gbm(
         market_type=market_type,
         venue_type=venue_type,
     ).generate()
+
+
+generate_prices = generate_gbm
 
 
 def generate_heston(

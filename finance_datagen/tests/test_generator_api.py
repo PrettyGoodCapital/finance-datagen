@@ -68,6 +68,18 @@ def test_signal_generator_replaces_standalone_helper() -> None:
     assert model_output.equals(helper_output)
 
 
+def test_generate_prices_aliases_generate_gbm() -> None:
+    assert fd.generate_prices is fd.generate_gbm
+
+    prices = fd.generate_prices(n_steps=3, symbol="ACME", seed=4)
+    gbm = fd.generate_gbm(n_steps=3, symbol="ACME", seed=4)
+
+    assert prices.equals(gbm)
+    assert prices.height == 4
+    assert prices["symbol"].to_list() == ["ACME"] * 4
+    assert (prices["price"] > 0).all()
+
+
 def test_pydantic_field_validation_rejects_invalid_parameters() -> None:
     with pytest.raises(ValueError, match="n_dates"):
         fd.SignalGenerator(n_dates=0)
