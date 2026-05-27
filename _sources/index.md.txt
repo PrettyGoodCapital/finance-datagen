@@ -35,9 +35,9 @@ objects.
 All public generator classes inherit from `DataGenerator`, a pydantic
 base model that validates typed parameters on construction. Use
 `.generate()` for the table output, or `next(generator)` for one-shot
-iterator-style use. Convenience functions such as `generate_gbm(...)`
-and `generate_signal(...)` instantiate the matching model and return
-`.generate()`.
+iterator-style use. Convenience functions such as `generate_prices(...)`,
+`generate_gbm(...)`, and `generate_signal(...)` instantiate the matching model
+and return `.generate()`.
 
 ### Generators
 
@@ -50,8 +50,10 @@ and `generate_signal(...)` instantiate the matching model and return
 | `GARCHGenerator`  | GARCH(1,1) returns                                          | `timestamp, symbol, price, return, sigma`           |
 | `ohlc_from_close` | OHLCV synthesis from any close series                       | `timestamp, symbol, open, high, low, close, volume` |
 
-Price-path convenience wrappers are also exported as `generate_gbm`,
-`generate_heston`, and `generate_garch`.
+Price-path convenience wrappers are also exported as `generate_prices`,
+`generate_gbm`, `generate_heston`, and `generate_garch`. `generate_prices` is a
+plain alias for `generate_gbm` for examples and tests that want a model-neutral
+name.
 
 #### Python generators
 
@@ -90,20 +92,10 @@ timestamps align with actual business days and session hours.
 ### Quick start
 
 ```python
-from finance_datagen import GBMGenerator, OrdersGenerator, generate_signal, ohlc_from_close
+from finance_datagen import OrdersGenerator, generate_prices, generate_signal, ohlc_from_close
 
-closes = GBMGenerator(
-    s0=100.0,
-    mu=0.07,
-    sigma=0.25,
-    seed=0,
-    currency="USD",
-    exchange="XNYS",
-    instrument_type="Spot",
-    market_type="Equities",
-    venue_type="Exchange",
-).generate()
-bars   = ohlc_from_close(closes["price"], seed=0)
+closes = generate_prices(symbol="ACME", seed=0)
+bars   = ohlc_from_close(closes["price"], symbol="ACME", seed=0)
 signal = generate_signal(n_dates=20, n_assets=50, seed=0)
 orders = OrdersGenerator(n_dates=3, n_assets=5, orders_per_day=10, exchange="XNYS", currency="USD", seed=0).generate()
 ```
