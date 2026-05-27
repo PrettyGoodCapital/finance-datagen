@@ -11,6 +11,7 @@ from finance_datagen import (
     HestonGenerator,
     GARCHGenerator,
     ohlc_from_close,
+    generate_prices,
     generate_gbm,
     generate_heston,
     generate_garch,
@@ -62,18 +63,10 @@ ______________________________________________________________________
 ## Quick start
 
 ```python
-import polars as pl
-from finance_datagen import GBMGenerator, ohlc_from_close
+from finance_datagen import generate_prices, ohlc_from_close
 
 # 1 year of daily log-normal closes, deterministic.
-prices = GBMGenerator(
-    s0=100.0,
-    mu=0.07,
-    sigma=0.25,
-    n_steps=252,
-    symbol="ACME",
-    seed=0,
-).generate()
+prices = generate_prices(symbol="ACME", seed=0)
 
 # Synthesize OHLCV bars around the closes.
 bars = ohlc_from_close(prices["price"], symbol="ACME", seed=0)
@@ -108,6 +101,8 @@ ______________________________________________________________________
    :show-inheritance:
 
 .. autofunction:: ohlc_from_close
+
+.. autofunction:: generate_prices
 
 .. autofunction:: generate_gbm
 

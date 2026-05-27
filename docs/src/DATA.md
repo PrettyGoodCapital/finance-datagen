@@ -30,6 +30,8 @@ All tabular outputs share the following conventions:
 
 Most generators also have a matching `generate_*` convenience function
 that instantiates the model for validation and returns `.generate()`.
+`generate_prices` is a plain alias for `generate_gbm` for examples and tests
+that want a model-neutral name.
 
 ### Enum-backed metadata
 
