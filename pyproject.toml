@@ -70,7 +70,7 @@ Homepage = "https://github.com/prettygoodcapital/finance-datagen"
 [tool.bumpversion]
 current_version = "0.2.1"
 commit = true
-tag = true
+tag = false 
 commit_args = "-s"
 
 [[tool.bumpversion.files]]
