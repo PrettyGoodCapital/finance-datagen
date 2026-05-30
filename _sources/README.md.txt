@@ -98,6 +98,3 @@ PyCapsule via `pyo3-arrow`. The Python wrappers call
 polars-rs and polars-py codebases on opposite sides of a stable ABI
 boundary, avoiding the binary-incompatibility issues that come with
 linking polars from both Rust and CPython.
-
-> [!NOTE]
-> This library was generated using [copier](https://copier.readthedocs.io/en/stable/) from the [Base Python Project Template repository](https://github.com/python-project-templates/base).
