@@ -10,7 +10,7 @@ path = "rust/python/lib.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-finance_datagen = { package = "finance-datagen", path = "./rust", version = "0.3.0" }
+finance_datagen = { package = "finance-datagen", path = "./rust", version = "*" }
 pyo3 = { version = "0.28.2", features = ["abi3", "abi3-py310", "extension-module", "multiple-pymethods"] }
 # pyo3-arrow's `buffer_protocol` default feature requires `abi3-py311` or
 # non-abi3 builds; we target abi3-py310 so disable it. We pass Arrow data
