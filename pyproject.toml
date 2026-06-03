@@ -32,7 +32,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "finance-dates>=0.2.0,<0.3",
+    "finance-dates>=0.2.0,<0.4",
     "finance-enums>=0.5.1,<0.6",
     "numpy",
     "pydantic>=2",
@@ -70,7 +70,7 @@ Homepage = "https://github.com/prettygoodcapital/finance-datagen"
 [tool.bumpversion]
 current_version = "0.3.0"
 commit = true
-tag = false 
+tag = false
 commit_args = "-s"
 
 [[tool.bumpversion.files]]
