@@ -33,7 +33,7 @@ classifiers = [
 
 dependencies = [
     "finance-dates>=0.2.0,<0.4",
-    "finance-enums>=0.5.1,<0.6",
+    "finance-enums>=0.5.1,<0.7",
     "numpy",
     "pydantic>=2",
     "polars>=1.0",
