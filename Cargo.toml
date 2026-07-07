@@ -17,7 +17,7 @@ pyo3 = { version = "0.28.2", features = ["abi3", "abi3-py310", "extension-module
 # via PyCapsule (PyArray / PyRecordBatch), not the Python buffer protocol.
 pyo3-arrow = { version = "0.17", default-features = false }
 arrow-array = "58"
-arrow-schema = "58"
+arrow-schema = "59"
 
 [profile.release]
 panic = 'abort'
