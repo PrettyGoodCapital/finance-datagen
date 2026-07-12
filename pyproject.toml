@@ -13,8 +13,13 @@ authors = [
 description = "Standard financial data generation"
 readme = "README.md"
 license = { text = "Apache-2.0" }
+<<<<<<< before updating
 version = "0.3.1"
 requires-python = ">=3.10"
+=======
+version = "0.1.0"
+requires-python = ">=3.11"
+>>>>>>> after updating
 keywords = []
 
 classifiers = [
@@ -24,7 +29,6 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -94,8 +98,12 @@ search = 'version = "{current_version}"'
 replace = 'version = "{new_version}"'
 
 [tool.cibuildwheel]
+<<<<<<< before updating
 build = "cp310-*"
 skip = "*i686* *musllinux* *win32 *arm_64"
+=======
+build = "cp311-*"
+>>>>>>> after updating
 test-command = "pytest -vvv {project}/finance_datagen/tests"
 test-extras = "develop"
 
