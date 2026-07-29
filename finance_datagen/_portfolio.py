@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Sequence
 
 import numpy as np
 import polars as pl

@@ -14,7 +14,7 @@ PositiveFloat = Annotated[float, Field(gt=0)]
 NonNegativeFloat = Annotated[float, Field(ge=0)]
 
 
-class DataGenerator(BaseModel, Generic[OutputT], ABC):
+class DataGenerator(BaseModel, ABC, Generic[OutputT]):
     """Pydantic base class for table-generating models."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True, validate_default=True)
