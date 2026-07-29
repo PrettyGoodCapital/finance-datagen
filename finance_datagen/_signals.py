@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from datetime import date, timedelta
-from typing import Annotated, Sequence
+from typing import Annotated
 
 import numpy as np
 import polars as pl
