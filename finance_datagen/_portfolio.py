@@ -23,10 +23,10 @@ from pydantic import model_validator
 from ._base import DataGenerator, NonNegativeFloat, PositiveFloat, PositiveInt
 
 _TRANSACTION_INTENTS = (
-    (Side.Buy.value, PositionEffect.Open.value),
-    (Side.Sell.value, PositionEffect.Close.value),
-    (Side.Sell.value, PositionEffect.Open.value),
-    (Side.Buy.value, PositionEffect.Close.value),
+    (Side.Buy.name, PositionEffect.Open.name),
+    (Side.Sell.name, PositionEffect.Close.name),
+    (Side.Sell.name, PositionEffect.Open.name),
+    (Side.Buy.name, PositionEffect.Close.name),
 )
 
 
@@ -176,7 +176,7 @@ class TransactionsGenerator(DataGenerator[pl.DataFrame]):
         side_values = transaction_intents[intent_indices, 0]
         position_effect_values = transaction_intents[intent_indices, 1]
         raw_amounts = rng.integers(1, self.max_amount + 1, size=n_rows).astype(float)
-        signed_amounts = np.where(side_values == Side.Buy.value, raw_amounts, -raw_amounts)
+        signed_amounts = np.where(side_values == Side.Buy.name, raw_amounts, -raw_amounts)
         prices = self.average_price * rng.lognormal(mean=0.0, sigma=self.price_vol, size=n_rows)
         notional = np.abs(signed_amounts) * prices
 
@@ -260,25 +260,25 @@ class OrdersGenerator(DataGenerator[pl.DataFrame]):
                 "timestamp": pl.Series(timestamps).cast(pl.Datetime("ms", "UTC")),
                 "symbol": rng.choice(np.array(symbols), size=n_rows),
                 "order_id": [f"ORD-{i:08d}" for i in range(n_rows)],
-                "side": rng.choice(np.array([Side.Buy.value, Side.Sell.value]), size=n_rows),
-                "order_type": rng.choice(np.array([OrderType.Market.value, OrderType.Limit.value]), size=n_rows, p=[0.55, 0.45]),
+                "side": rng.choice(np.array([Side.Buy.name, Side.Sell.name]), size=n_rows),
+                "order_type": rng.choice(np.array([OrderType.Market.name, OrderType.Limit.name]), size=n_rows, p=[0.55, 0.45]),
                 "quantity": rng.integers(1, self.max_quantity + 1, size=n_rows),
                 "limit_price": self.average_price * rng.lognormal(mean=0.0, sigma=self.price_vol, size=n_rows),
                 "order_status": rng.choice(
                     np.array(
                         [
-                            OrderStatus.New.value,
-                            OrderStatus.PartiallyFilled.value,
-                            OrderStatus.Filled.value,
-                            OrderStatus.Canceled.value,
-                            OrderStatus.Rejected.value,
+                            OrderStatus.New.name,
+                            OrderStatus.PartiallyFilled.name,
+                            OrderStatus.Filled.name,
+                            OrderStatus.Canceled.name,
+                            OrderStatus.Rejected.name,
                         ]
                     ),
                     size=n_rows,
                     p=[0.35, 0.25, 0.25, 0.10, 0.05],
                 ),
                 "time_in_force": rng.choice(
-                    np.array([TimeInForce.Day.value, TimeInForce.GoodTillCanceled.value]),
+                    np.array([TimeInForce.Day.name, TimeInForce.GoodTillCanceled.name]),
                     size=n_rows,
                     p=[0.80, 0.20],
                 ),
@@ -350,12 +350,12 @@ class ExecutionsGenerator(DataGenerator[pl.DataFrame]):
                 "execution_id": [f"EXE-{i:08d}" for i in range(n_rows)],
                 "order_id": [f"ORD-{int(i / 2):08d}" for i in range(n_rows)],
                 "symbol": rng.choice(np.array(symbols), size=n_rows),
-                "side": rng.choice(np.array([Side.Buy.value, Side.Sell.value]), size=n_rows),
+                "side": rng.choice(np.array([Side.Buy.name, Side.Sell.name]), size=n_rows),
                 "price": self.average_price * rng.lognormal(mean=0.0, sigma=self.price_vol, size=n_rows),
                 "quantity": rng.integers(1, self.max_quantity + 1, size=n_rows),
                 "liquidity_flag": rng.choice(np.array(["Added", "Removed", "Auction"]), size=n_rows, p=[0.4, 0.5, 0.1]),
                 "time_in_force": rng.choice(
-                    np.array([TimeInForce.Day.value, TimeInForce.GoodTillCanceled.value]),
+                    np.array([TimeInForce.Day.name, TimeInForce.GoodTillCanceled.name]),
                     size=n_rows,
                     p=[0.80, 0.20],
                 ),

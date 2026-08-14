@@ -13,7 +13,7 @@ from pydantic import Field, model_validator
 
 from ._base import DataGenerator, NonNegativeFloat, PositiveFloat, PositiveInt
 
-_DEFAULT_SECTORS = tuple(member.value for member in Sector)
+_DEFAULT_SECTORS = tuple(member.name for member in Sector)
 
 
 def _date_range(n_dates: int, start: date | None) -> list[date]:

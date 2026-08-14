@@ -13,7 +13,7 @@ authors = [
 description = "Standard financial data generation"
 readme = "README.md"
 license = { text = "Apache-2.0" }
-version = "0.3.2"
+version = "0.3.3"
 requires-python = ">=3.10"
 keywords = []
 
@@ -32,7 +32,7 @@ classifiers = [
 
 dependencies = [
     "finance-dates>=0.2.0,<0.5",
-    "finance-enums>=0.5.1,<0.7",
+    "finance-enums>=0.5.1,<0.8",
     "numpy",
     "pydantic>=2",
     "polars>=1.0",
@@ -67,7 +67,7 @@ Repository = "https://github.com/prettygoodcapital/finance-datagen"
 Homepage = "https://github.com/prettygoodcapital/finance-datagen"
 
 [tool.bumpversion]
-current_version = "0.3.2"
+current_version = "0.3.3"
 commit = true
 tag = false
 commit_args = "-s"

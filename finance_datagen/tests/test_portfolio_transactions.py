@@ -39,10 +39,10 @@ def test_transactions_generator_schema_and_notional() -> None:
     assert transactions.columns == ["timestamp", "symbol", "amount", "price", "side", "position_effect", "notional", "commission", "fees", "bps"]
     assert transactions.shape == (18, 10)
     assert transactions["timestamp"].dtype == pl.Datetime("ms", "UTC")
-    assert set(transactions["side"].unique().to_list()) <= {Side.Buy.value, Side.Sell.value}
-    assert set(transactions["position_effect"].unique().to_list()) <= {PositionEffect.Open.value, PositionEffect.Close.value}
-    assert (transactions.filter(pl.col("side") == Side.Buy.value)["amount"] > 0).all()
-    assert (transactions.filter(pl.col("side") == Side.Sell.value)["amount"] < 0).all()
+    assert set(transactions["side"].unique().to_list()) <= {Side.Buy.name, Side.Sell.name}
+    assert set(transactions["position_effect"].unique().to_list()) <= {PositionEffect.Open.name, PositionEffect.Close.name}
+    assert (transactions.filter(pl.col("side") == Side.Buy.name)["amount"] > 0).all()
+    assert (transactions.filter(pl.col("side") == Side.Sell.name)["amount"] < 0).all()
     assert (transactions["price"] > 0).all()
     assert (transactions["notional"] >= 0).all()
 
@@ -115,5 +115,5 @@ def test_orders_and_executions_generators_schema() -> None:
         "exchange",
     } <= set(executions.columns)
 
-    assert set(orders["side"].unique().to_list()) <= {Side.Buy.value, Side.Sell.value}
-    assert set(executions["side"].unique().to_list()) <= {Side.Buy.value, Side.Sell.value}
+    assert set(orders["side"].unique().to_list()) <= {Side.Buy.name, Side.Sell.name}
+    assert set(executions["side"].unique().to_list()) <= {Side.Buy.name, Side.Sell.name}

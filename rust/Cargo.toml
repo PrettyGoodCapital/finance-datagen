@@ -1,6 +1,6 @@
 [package]
 name = "finance-datagen"
-version = "0.3.2"
+version = "0.3.3"
 authors = ["PrettyGoodCapital <prettygoodcapital@gmail.com>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -28,4 +28,3 @@ approx = "0.5"
 
 [profile.test.junit]
 path = "junit.xml"
-

@@ -13,7 +13,7 @@ import finance_datagen as fd
 def test_fundamental_risk_model_generator_schema_and_standardisation() -> None:
     generator = fd.FundamentalRiskModelGenerator(n_assets=40, seed=2)
     loadings = generator.generate()
-    expected_sectors = tuple(member.value for member in Sector)
+    expected_sectors = tuple(member.name for member in Sector)
 
     expected = [
         "symbol",
