@@ -71,6 +71,10 @@ current_version = "0.3.3"
 commit = true
 tag = false
 commit_args = "-s"
+pre_commit_hooks = [
+    "cargo update --workspace",
+    "git add Cargo.lock",
+]
 
 [[tool.bumpversion.files]]
 filename = "finance_datagen/__init__.py"
