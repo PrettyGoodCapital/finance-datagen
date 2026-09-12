@@ -19,10 +19,7 @@ fn map_err<E: std::fmt::Display>(e: E) -> PyErr {
     pyo3::exceptions::PyValueError::new_err(e.to_string())
 }
 
-fn rb_to_py<'py>(
-    py: Python<'py>,
-    rb: arrow_array::RecordBatch,
-) -> PyResult<Bound<'py, PyAny>> {
+fn rb_to_py<'py>(py: Python<'py>, rb: arrow_array::RecordBatch) -> PyResult<Bound<'py, PyAny>> {
     Ok(PyRecordBatch::new(rb).into_pyarrow(py)?)
 }
 
