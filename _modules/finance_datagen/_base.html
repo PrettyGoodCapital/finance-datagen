@@ -264,7 +264,7 @@
 <span class="w">        </span><span class="sd">"""Generate and return the synthetic dataset."""</span></div>
 
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataGenerator</span><span class="p">[</span><span class="n">OutputT</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataGenerator</span><span class="p">[</span><span class="n">OutputT</span><span class="p">]:</span>  <span class="c1"># ty: ignore[invalid-method-override]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_yielded</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">return</span> <span class="bp">self</span>
 

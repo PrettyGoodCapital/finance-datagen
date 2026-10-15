@@ -241,7 +241,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span> <span class="k">as</span> <span class="n">_Annotated</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span> <span class="k">as</span> <span class="n">_Annotated</span><span class="p">,</span> <span class="n">cast</span> <span class="k">as</span> <span class="n">_cast</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_pl</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">finance_enums</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -347,7 +347,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_rb_to_polars</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-    <span class="k">return</span> <span class="n">_pl</span><span class="o">.</span><span class="n">from_arrow</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_cast</span><span class="p">(</span><span class="n">_pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">_pl</span><span class="o">.</span><span class="n">from_arrow</span><span class="p">(</span><span class="n">batch</span><span class="p">))</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_with_optional_metadata</span><span class="p">(</span>
