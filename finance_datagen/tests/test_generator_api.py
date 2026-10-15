@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 import polars as pl
 import pytest
 
@@ -89,7 +92,7 @@ def test_pydantic_field_validation_rejects_invalid_parameters() -> None:
 
 
 def test_convenience_functions_instantiate_matching_models() -> None:
-    cases = [
+    cases: list[tuple[Callable[..., Any], type[fd.DataGenerator[Any]], dict[str, Any]]] = [
         (fd.generate_gbm, fd.GBMGenerator, {"n_steps": 3, "seed": 1}),
         (fd.generate_heston, fd.HestonGenerator, {"n_steps": 3, "seed": 2}),
         (fd.generate_garch, fd.GARCHGenerator, {"n_steps": 3, "seed": 3}),

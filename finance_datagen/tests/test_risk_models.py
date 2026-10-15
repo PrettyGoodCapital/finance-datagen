@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 import polars as pl
 import pytest
@@ -35,8 +37,8 @@ def test_fundamental_risk_model_generator_schema_and_standardisation() -> None:
     assert (loadings["specific_variance"] > 0).all()
 
     for factor in ["value", "momentum", "size", "quality", "low_vol", "growth"]:
-        assert float(loadings[factor].mean()) == pytest.approx(0.0, abs=1e-9)
-        assert float(loadings[factor].std(ddof=0)) == pytest.approx(1.0, abs=1e-9)
+        assert cast(float, loadings[factor].mean()) == pytest.approx(0.0, abs=1e-9)
+        assert cast(float, loadings[factor].std(ddof=0)) == pytest.approx(1.0, abs=1e-9)
 
 
 def test_factor_covariance_generator_is_symmetric_psd() -> None:

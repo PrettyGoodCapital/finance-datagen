@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import cast
 
 import polars as pl
 import pytest
@@ -22,7 +23,7 @@ def test_generate_signal_ic_positive():
     ic = df.group_by("date").agg(
         pl.corr(pl.col("signal"), pl.col("fwd_returns"), method="pearson").alias("ic"),
     )
-    mean_ic = float(ic["ic"].mean())
+    mean_ic = cast(float, ic["ic"].mean())
     assert mean_ic == pytest.approx(0.3, abs=0.05)
 
 
@@ -31,7 +32,7 @@ def test_generate_signal_ic_zero():
     ic = df.group_by("date").agg(
         pl.corr(pl.col("signal"), pl.col("fwd_returns"), method="pearson").alias("ic"),
     )
-    assert abs(float(ic["ic"].mean())) < 0.05
+    assert abs(cast(float, ic["ic"].mean())) < 0.05
 
 
 def test_generate_signal_invalid_ic():
@@ -56,8 +57,8 @@ def test_generate_factor_loadings_standardised():
     df = fd.generate_factor_loadings(n_assets=200, factors=("value", "momentum"), seed=7)
     for col in ("value", "momentum"):
         s = df[col]
-        assert float(s.mean()) == pytest.approx(0.0, abs=1e-9)
-        assert float(s.std(ddof=0)) == pytest.approx(1.0, abs=1e-9)
+        assert cast(float, s.mean()) == pytest.approx(0.0, abs=1e-9)
+        assert cast(float, s.std(ddof=0)) == pytest.approx(1.0, abs=1e-9)
 
 
 def test_generate_benchmark_stats():
@@ -70,7 +71,7 @@ def test_generate_benchmark_stats():
     assert df.shape == (2520, 2)
     assert df["date"].dtype == pl.Date
     rets = df["benchmark"]
-    ann_ret = float(rets.mean()) * 252
-    ann_vol = float(rets.std()) * math.sqrt(252)
+    ann_ret = cast(float, rets.mean()) * 252
+    ann_vol = cast(float, rets.std()) * math.sqrt(252)
     assert ann_ret == pytest.approx(0.10, abs=0.15)
     assert ann_vol == pytest.approx(0.20, abs=0.02)

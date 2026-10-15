@@ -7,7 +7,7 @@ public API returns polars ``DataFrame`` objects.
 
 from __future__ import annotations
 
-from typing import Annotated as _Annotated
+from typing import Annotated as _Annotated, cast as _cast
 
 import polars as _pl
 from finance_enums import (
@@ -113,7 +113,7 @@ __all__ = [
 
 
 def _rb_to_polars(batch) -> _pl.DataFrame:
-    return _pl.from_arrow(batch)
+    return _cast(_pl.DataFrame, _pl.from_arrow(batch))
 
 
 def _with_optional_metadata(
