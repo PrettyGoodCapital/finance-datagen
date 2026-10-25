@@ -1,4 +1,3 @@
-<<<<<<< before updating
 from collections.abc import Sequence
 
 from pyarrow import RecordBatch
@@ -63,7 +62,3 @@ def ohlc_from_close(
     step_ms: int = 86400000,
     seed: int | None = None,
 ) -> RecordBatch: ...
-=======
-class Example:
-    def __init__(self, value: str) -> None: ...
->>>>>>> after updating
