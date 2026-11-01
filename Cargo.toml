@@ -16,8 +16,8 @@ pyo3 = { version = "0.29.2", features = ["abi3", "extension-module", "multiple-p
 # non-abi3 builds; we target abi3-py310 so disable it. We pass Arrow data
 # via PyCapsule (PyArray / PyRecordBatch), not the Python buffer protocol.
 pyo3-arrow = { version = "0.19", default-features = false }
-arrow-array = "59"
-arrow-schema = "59"
+arrow-array = "60"
+arrow-schema = "60"
 
 [profile.release]
 panic = 'abort'
