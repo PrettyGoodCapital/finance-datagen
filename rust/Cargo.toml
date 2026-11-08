@@ -26,5 +26,8 @@ thiserror = "1"
 [dev-dependencies]
 approx = "0.5"
 
+<<<<<<< before updating
 [profile.test.junit]
 path = "junit.xml"
+=======
+>>>>>>> after updating
