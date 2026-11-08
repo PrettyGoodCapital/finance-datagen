@@ -20,7 +20,7 @@ fn map_err<E: std::fmt::Display>(e: E) -> PyErr {
 }
 
 fn rb_to_py<'py>(py: Python<'py>, rb: arrow_array::RecordBatch) -> PyResult<Bound<'py, PyAny>> {
-    Ok(PyRecordBatch::new(rb).into_pyarrow(py)?)
+    PyRecordBatch::new(rb).into_pyarrow(py)
 }
 
 #[pyclass(module = "finance_datagen")]

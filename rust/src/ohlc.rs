@@ -9,7 +9,7 @@
 use std::sync::Arc;
 
 use arrow_array::{ArrayRef, RecordBatch};
-use rand::Rng;
+use rand::RngExt;
 use rand_distr::StandardNormal;
 
 use crate::arrow_util::{const_string, f64_array, record_batch, timestamp_grid_ms};

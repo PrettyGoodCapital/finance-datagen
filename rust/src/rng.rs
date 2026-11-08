@@ -6,6 +6,6 @@ use rand_chacha::ChaCha8Rng;
 pub fn make_rng(seed: Option<u64>) -> ChaCha8Rng {
     match seed {
         Some(s) => ChaCha8Rng::seed_from_u64(s),
-        None => ChaCha8Rng::from_entropy(),
+        None => rand::make_rng(),
     }
 }
