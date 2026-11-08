@@ -31,7 +31,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "finance-dates>=0.2.0,<0.5",
+    "finance-dates>=0.2.0,<0.6",
     "finance-enums>=0.5.1,<0.8",
     "numpy",
     "pydantic>=2",
@@ -49,7 +49,7 @@ develop = [
     "hatch-rs",
     "hatchling",
     "mdformat",
-    "mdformat-frontmatter",
+    "mdformat-myst",
     "mdformat-tables>=1",
     "pytest",
     "pytest-cov",
