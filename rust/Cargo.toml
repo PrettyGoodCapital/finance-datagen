@@ -14,14 +14,14 @@ path = "src/lib.rs"
 crate-type = ["rlib"]
 
 [dependencies]
-arrow-array = "59"
-arrow-schema = "59"
-arrow-buffer = "59"
+arrow-array = "60"
+arrow-schema = "60"
+arrow-buffer = "60"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
-rand = "0.8"
-rand_chacha = "0.3"
-rand_distr = "0.4"
-thiserror = "1"
+rand = "0.10"
+rand_chacha = "0.10"
+rand_distr = "0.6"
+thiserror = "2"
 
 [dev-dependencies]
 approx = "0.5"
