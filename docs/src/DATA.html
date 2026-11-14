@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Data &#8212; finance datagen v0.3.3</title>
+    <title>Data &#8212; finance datagen v0.3.4</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/fuma.css?v=ca04d621" />
     <link rel="stylesheet" type="text/css" href="../../_static/fuma-code.css?v=a950e949" />
@@ -13,15 +13,15 @@
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
     <link rel="stylesheet" type="text/css" href="../../_static/autodoc_pydantic.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=6a604523" />
     <link rel="stylesheet" type="text/css" href="../../_static/fonts/fuma-fonts.css?v=c2892c73" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/custom.css?v=88c24c6a" />
-    <script src="../../_static/documentation_options.js?v=d5a15cff"></script>
+    <script src="../../_static/documentation_options.js?v=1e28cc32"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
-    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../../_static/design-tabs.js?v=fcb327ea"></script>
     <script data-searchlite-index="searchlite-index.json" defer="defer" src="../../_static/searchlite.js?v=a5320898"></script>
     <script defer="defer" src="../../_static/fuma.js?v=9c325f6c"></script>
     <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
@@ -51,7 +51,7 @@
   <div class="fd-subnav-inner">
     <button type="button" class="fd-icon-button fd-sidebar-toggle" aria-controls="fd-sidebar" aria-expanded="false" aria-label="Toggle navigation" title="Toggle navigation">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="fd-icon "><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
-    </button><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">finance datagen v0.3.3</span>
+    </button><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">finance datagen v0.3.4</span>
 </a>
 
     <div class="fd-nav-actions">
@@ -66,7 +66,7 @@
 
 <aside id="fd-sidebar" aria-label="Documentation">
   <div class="fd-sidebar-header">
-    <div class="fd-sidebar-brand-row"><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">finance datagen v0.3.3</span>
+    <div class="fd-sidebar-brand-row"><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">finance datagen v0.3.4</span>
 </a>
       <button type="button" class="fd-icon-button fd-sidebar-collapse" aria-label="Collapse sidebar" title="Collapse sidebar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="fd-icon "><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
     </div>
@@ -312,15 +312,11 @@ minute timestamp grid for testing.</p>
 <h3>Geometric Brownian Motion (GBM)<a class="headerlink" href="#geometric-brownian-motion-gbm" title="Link to this heading">¶</a></h3>
 <p>The classic Black-Scholes log-normal price process.</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}
-dS_t = \\mu S_t , dt + \\sigma S_t , dW_t
-\end{split}\]</div>
+\[\begin{split}dS_t = \\mu S_t , dt + \\sigma S_t , dW_t\end{split}\]</div>
 <p>Discretized exactly in log-space:</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}
-S\_{t+1} = S_t \\exp!\\Big( (\\mu - \\tfrac{1}{2}\\sigma^2),dt + \\sigma\\sqrt{dt},Z \\Big),
-\\quad Z \\sim \\mathcal{N}(0, 1)
-\end{split}\]</div>
+\[\begin{split}S\_{t+1} = S_t \\exp!\\Big( (\\mu - \\tfrac{1}{2}\\sigma^2),dt + \\sigma\\sqrt{dt},Z \\Big),
+\\quad Z \\sim \\mathcal{N}(0, 1)\end{split}\]</div>
 <section id="gbm-parameters">
 <h4>GBM Parameters<a class="headerlink" href="#gbm-parameters" title="Link to this heading">¶</a></h4>
 <table class="docutils align-default">
@@ -402,22 +398,18 @@ S\_{t+1} = S_t \\exp!\\Big( (\\mu - \\tfrac{1}{2}\\sigma^2),dt + \\sigma\\sqrt{d
 <p>Two-factor SDE with mean-reverting variance and correlated price and
 variance shocks:</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}
-\\begin{aligned}
+\[\begin{split}\\begin{aligned}
 dS_t &amp;= \\mu S_t,dt + \\sqrt{v_t},S_t,dW_t^{S} \\
 dv_t &amp;= \\kappa(\\theta - v_t),dt + \\xi\\sqrt{v_t},dW_t^{v} \\
 \\mathrm{Corr}(dW^S, dW^v) &amp;= \\rho
-\\end{aligned}
-\end{split}\]</div>
+\\end{aligned}\end{split}\]</div>
 <p>The implementation uses full-truncation Euler on variance, then
 log-Euler on price:</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}
-\\begin{aligned}
+\[\begin{split}\\begin{aligned}
 v\_{t+1} &amp;= v_t + \\kappa(\\theta - v_t^+),dt + \\xi\\sqrt{v_t^+,dt},Z_v \\
 S\_{t+1} &amp;= S_t \\exp!\\Big( (\\mu - \\tfrac{1}{2}v_t^+),dt + \\sqrt{v_t^+,dt},Z_S \\Big)
-\\end{aligned}
-\end{split}\]</div>
+\\end{aligned}\end{split}\]</div>
 <p>where <span class="math notranslate nohighlight">\(v_t^+ = \\max(v_t, 0)\)</span>.</p>
 <section id="heston-parameters">
 <h4>Heston Parameters<a class="headerlink" href="#heston-parameters" title="Link to this heading">¶</a></h4>
@@ -503,13 +495,11 @@ S\_{t+1} &amp;= S_t \\exp!\\Big( (\\mu - \\tfrac{1}{2}v_t^+),dt + \\sqrt{v_t^+,d
 <h3>GARCH(1,1) Returns<a class="headerlink" href="#garch-1-1-returns" title="Link to this heading">¶</a></h3>
 <p>Discrete-time conditional-variance model in log returns:</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}
-\\begin{aligned}
+\[\begin{split}\\begin{aligned}
 r_t &amp;= \\mu + \\sigma_t Z_t,\\quad Z_t \\sim \\mathcal{N}(0,1) \\
 \\sigma_t^2 &amp;= \\omega + \\alpha\\varepsilon\_{t-1}^2 + \\beta\\sigma\_{t-1}^2 \\
 \\varepsilon\_{t-1} &amp;= r\_{t-1} - \\mu
-\\end{aligned}
-\end{split}\]</div>
+\\end{aligned}\end{split}\]</div>
 <p>When <code class="docutils literal notranslate"><span class="pre">alpha</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">&lt;</span> <span class="pre">1</span></code>, the initial variance is the unconditional
 variance <code class="docutils literal notranslate"><span class="pre">omega</span> <span class="pre">/</span> <span class="pre">(1</span> <span class="pre">-</span> <span class="pre">alpha</span> <span class="pre">-</span> <span class="pre">beta)</span></code>. Otherwise it falls back to
 <code class="docutils literal notranslate"><span class="pre">omega</span></code>.</p>
@@ -693,9 +683,7 @@ use <code class="docutils literal notranslate"><span class="pre">numpy.random.de
 that the cross-sectional Pearson IC of <code class="docutils literal notranslate"><span class="pre">signal</span></code> against <code class="docutils literal notranslate"><span class="pre">fwd_returns</span></code>
 is approximately <code class="docutils literal notranslate"><span class="pre">ic</span></code> per date:</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}
-\\mathrm{signal} = ic \\cdot z(\\mathrm{fwd}) + \\sqrt{1 - ic^2},\\varepsilon
-\end{split}\]</div>
+\[\begin{split}\\mathrm{signal} = ic \\cdot z(\\mathrm{fwd}) + \\sqrt{1 - ic^2},\\varepsilon\end{split}\]</div>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Param</p></th>
