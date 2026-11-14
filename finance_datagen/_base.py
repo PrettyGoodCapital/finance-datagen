@@ -25,7 +25,7 @@ class DataGenerator(BaseModel, ABC, Generic[OutputT]):
     def generate(self) -> OutputT:
         """Generate and return the synthetic dataset."""
 
-    def __iter__(self) -> DataGenerator[OutputT]:  # ty: ignore[invalid-method-override]
+    def __iter__(self) -> DataGenerator[OutputT]:  # ty: ignore[incompatible-method-override]
         self._yielded = False
         return self
 
